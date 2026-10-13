@@ -129,7 +129,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.isAuthenticated, state.user])
 
   const navigate = (view: ViewType) => dispatch({ type: 'SET_VIEW', payload: view })
-  const login = (user: User) => dispatch({ type: 'LOGIN', payload: user })
+  const login = (user: User) => {
+    // Se guarda antes de cambiar de vista: los efectos de las vistas (hijas) corren antes que los
+    // de este proveedor, y sus primeras peticiones ya necesitan leer el token de localStorage
+    localStorage.setItem('agro-control-user', JSON.stringify(user))
+    dispatch({ type: 'LOGIN', payload: user })
+  }
   
   const logout = () => {
     localStorage.removeItem('agro-control-user')

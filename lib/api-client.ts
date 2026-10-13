@@ -24,8 +24,9 @@ function obtenerToken(): string | null {
  */
 export async function apiFetch<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const token = obtenerToken()
+  // Sin token no hay sesión que cerrar: solo se informa el error. El cierre de sesión
+  // automático queda reservado para cuando la API rechaza un token (401).
   if (!token) {
-    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
     throw new ApiError('No hay una sesión activa.', 401)
   }
 
