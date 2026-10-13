@@ -36,7 +36,7 @@ Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin c
 2. Ve a **New → Blueprint** y elige el repositorio. Render lee `render.yaml` y propone el servicio `agro-control-api`.
 3. Completa las variables que pide:
    - `DATABASE_URL`: la connection string de Neon.
-   - `CORS_ORIGINS`: por ahora `https://localhost`. La completarás en el paso 4.
+   - `CORS_ORIGINS` ya viene definido en `render.yaml`; si cambia la URL de Vercel, actualízalo ahí.
    - `JWT_SECRET` lo genera Render automáticamente.
 4. Pulsa **Apply**. Cuando termine, abre `https://<tu-servicio>.onrender.com/test-db`. Debe responder `"status":"success"`.
 
@@ -49,13 +49,13 @@ Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin c
 
 ## 4. Conectar web y API (CORS)
 
-En Render, ve a **agro-control-api → Environment** y cambia `CORS_ORIGINS` a:
+`CORS_ORIGINS` está definido en `render.yaml`:
 
 ```
-https://agro-control.vercel.app,https://localhost
+https://agro-control-theta.vercel.app,https://localhost
 ```
 
-Usa tu URL real de Vercel. `https://localhost` es el origen de la app Android. Al guardar, Render redespliega solo.
+`https://localhost` es el origen de la app Android. Si la URL de Vercel cambia (por ejemplo, al usar un dominio propio), edita ese valor en `render.yaml` y haz push: el Blueprint de Render lo aplica y redespliega solo.
 
 ## 5. Cuentas de prueba
 

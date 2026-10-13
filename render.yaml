@@ -9,6 +9,10 @@ services:
     # Misma zona que la base de Neon (AWS us-east-2, Ohio) para minimizar la latencia
     region: ohio
     rootDir: backend
+    # Solo redesplegar cuando cambie la API (los cambios del frontend los publica Vercel)
+    buildFilter:
+      paths:
+        - backend/**
     buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /test-db
@@ -23,8 +27,8 @@ services:
       # Secreto aleatorio para firmar los JWT (Render lo genera)
       - key: JWT_SECRET
         generateValue: true
-      # URL de la web en Vercel + origen de la app Android, separados por coma
+      # Web publicada en Vercel + origen de la app Android (Capacitor), separados por coma
       - key: CORS_ORIGINS
-        sync: false
+        value: https://agro-control-theta.vercel.app,https://localhost
       - key: SIMULAR_SENSORES
         value: "true"
