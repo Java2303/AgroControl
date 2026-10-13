@@ -49,11 +49,13 @@ const sensoresController = {
           ls.temperatura_suelo AS temperature,
           ls.ph AS ph,
           ls.nitrogeno AS nitrogen,
+          ls.fosforo AS phosphorus,
+          ls.potasio AS potassium,
           ls.fecha_captura AS "lastUpdate"
         FROM parcelas p
         JOIN lotes l ON p.parcela_id = l.parcela_id
         LEFT JOIN LATERAL (
-          SELECT humedad_suelo, temperatura_suelo, ph, nitrogeno, fecha_captura
+          SELECT humedad_suelo, temperatura_suelo, ph, nitrogeno, fosforo, potasio, fecha_captura
           FROM lecturas_suelo 
           WHERE lote_id = l.lote_id 
           ORDER BY fecha_captura DESC 
@@ -140,9 +142,23 @@ const sensoresController = {
         });
       });
 
+      // Promedio de macronutrientes (N, P, K) de la última lectura de cada lote
+      const promedio = (campo) => {
+        const valores = resUltimas.rows
+          .map(row => parseFloat(row[campo]))
+          .filter(v => !Number.isNaN(v));
+        if (valores.length === 0) return null;
+        return Math.round((valores.reduce((a, b) => a + b, 0) / valores.length) * 10) / 10;
+      };
+
       res.status(200).json({
         status: 'success',
-        data: respuesta
+        data: respuesta,
+        resumen: {
+          nitrogeno: promedio('nitrogen'),
+          fosforo: promedio('phosphorus'),
+          potasio: promedio('potassium')
+        }
       });
 
     } catch (error) {

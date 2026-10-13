@@ -1,9 +1,13 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "API REST de Agro Control (Express + PostgreSQL/PostGIS)",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "db:init": "node src/scripts/initDb.js",
+    "db:seed-demo": "node src/scripts/seedRandomDemoData.js",
     "test": "jest --coverage"
   },
   "keywords": [],
@@ -23,5 +27,8 @@
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

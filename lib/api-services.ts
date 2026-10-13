@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:4000/api';
+import { API_URL } from '@/lib/api-config'
+
 
 export const apiService = {
   /**

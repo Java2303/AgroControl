@@ -18,28 +18,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'AGRO CONTROL - Plataforma de Gestión Agrícola Inteligente',
   description: 'Sistema integral de gestión agrícola con monitoreo IoT, mapeo de parcelas y análisis de cultivos en tiempo real.',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+  // El ícono se toma de app/icon.svg (convención de archivos de Next.js)
 }
 
 export const viewport: Viewport = {
-  themeColor: '#012d1d',
+  themeColor: '#002147',
   width: 'device-width',
   initialScale: 1,
 }

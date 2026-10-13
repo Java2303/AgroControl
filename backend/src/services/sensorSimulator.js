@@ -1,5 +1,8 @@
 const db = require('../config/db');
 
+// Cobertura máxima de un nodo sensor (restricción check_cobertura_sensor de la tabla lotes)
+const SUPERFICIE_MAX_LOTE = 15;
+
 const simulateSensors = async () => {
     try {
         // 1. Obtener todas las parcelas de la base de datos
@@ -7,6 +10,8 @@ const simulateSensors = async () => {
         const parcelas = resParcelas.rows;
 
         for (const parcela of parcelas) {
+          // Un error en una parcela no debe detener la simulación de las demás
+          try {
             // 2. Verificar si la parcela tiene un lote creado, si no, crearlo
             let resLote = await db.query('SELECT lote_id FROM lotes WHERE parcela_id = $1 LIMIT 1', [parcela.parcela_id]);
             let loteId;
@@ -16,7 +21,7 @@ const simulateSensors = async () => {
                 const insertLote = await db.query(
                     `INSERT INTO lotes (parcela_id, nombre_lote, descripcion, superficie_ha, dispositivo_mac)
                      VALUES ($1, $2, $3, $4, $5) RETURNING lote_id`,
-                    [parcela.parcela_id, `Lote Principal - ${parcela.nombre}`, `Lote de monitoreo para ${parcela.nombre}`, parcela.area_hectareas, macRandom]
+                    [parcela.parcela_id, `Lote Principal - ${parcela.nombre}`, `Lote de monitoreo para ${parcela.nombre}`, Math.min(parseFloat(parcela.area_hectareas), SUPERFICIE_MAX_LOTE), macRandom]
                 );
                 loteId = insertLote.rows[0].lote_id;
                 console.log(`[Simulador] Creado lote principal para parcela ${parcela.nombre}`);
@@ -39,6 +44,9 @@ const simulateSensors = async () => {
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
                 [loteId, nitrogeno, fosforo, potasio, ph, humedad, temperatura, ec]
             );
+          } catch (errParcela) {
+            console.error(`[Simulador] Error en la parcela ${parcela.nombre}:`, errParcela.message);
+          }
         }
 
         // 5. Mantener la base de datos limpia borrando lecturas viejas que pasen de las últimas 50 por lote

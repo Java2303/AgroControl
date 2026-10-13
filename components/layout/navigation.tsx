@@ -24,7 +24,7 @@ export function Navigation() {
   return (
     <>
       {/* Desktop Sidebar - Dark surface with tonal sections */}
-      <aside className="hidden md:flex flex-col w-64 bg-[var(--primary)] text-[var(--on-primary)] h-screen fixed left-0 top-0 z-40">
+      <aside className="surface-dark hidden md:flex flex-col w-64 bg-[var(--primary)] text-[var(--on-primary)] h-screen fixed left-0 top-0 z-40">
         {/* Logo section */}
         <div className="p-6 bg-[var(--primary-container)]/20">
           <div className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export function Navigation() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{state.user?.name || 'Usuario'}</p>
-              <p className="text-[var(--tertiary)]/70 text-xs capitalize font-medium">{state.user?.userType || 'Agricultor'}</p>
+              <p className="text-[var(--tertiary)]/70 text-xs font-medium">{state.user?.userType === 'productor' ? 'Productor' : 'Ingeniero Agrónomo'}</p>
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@ export function Navigation() {
       </aside>
 
       {/* Mobile Bottom Navigation - glassmorphism */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
+      <nav className="surface-dark md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
         <div className="flex justify-around py-2">
           {navItems.slice(0, 4).map((item) => (
             <button

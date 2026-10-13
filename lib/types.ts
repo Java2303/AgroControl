@@ -8,12 +8,37 @@ export interface User {
   token: string
 }
 
+export type SoilStatus = 'optimo' | 'alerta' | 'critico'
+
 export interface Parcel {
   id: string
   name: string
-  cropType: 'soya' | 'maiz' | 'trigo' | 'otros'
-  area: number // Máximo 50 ha. según requerimiento del CIAT[cite: 1]
-  // ... resto de propiedades
+  cropType: string
+  area: number // Máximo 50 ha. según requerimiento del CIAT
+  soilStatus: SoilStatus
+  ubicacion_nombre?: string
+  coordinates?: MapPoint[]
+  createdAt?: string
+}
+
+/** Lectura actual de un sensor tal como la entrega GET /api/sensores */
+export interface SensorReading {
+  id: string
+  parcelId: string
+  parcelName: string
+  type: 'humidity' | 'temperature' | 'ph' | 'nitrogen'
+  value: number
+  unit: string
+  status: SoilStatus
+  lastUpdate: Date
+  history: number[]
+}
+
+/** Promedio de macronutrientes de las últimas lecturas (ppm) */
+export interface ResumenNPK {
+  nitrogeno: number | null
+  fosforo: number | null
+  potasio: number | null
 }
 
 // Actualicemos los tipos para reflejar el hardware real[cite: 1]
@@ -50,4 +75,6 @@ export interface AppState {
   parcels: Parcel[]
   sensors: Sensor[]
   isAuthenticated: boolean
+  /** Parcela a enfocar al abrir el mapa (desde "Ver en Mapa") */
+  mapFocusId: string | null
 }

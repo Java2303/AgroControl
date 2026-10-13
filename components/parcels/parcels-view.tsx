@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import { useApp } from '@/lib/app-context'
 import type { Parcel } from '@/lib/types'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
@@ -24,13 +25,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ParcelShape } from '@/components/parcels/parcel-shape'
+import { CULTIVOS_CIAT_SANTA_CRUZ, getCropColor, getCropNameById } from '@/lib/crops'
+import { apiFetch } from '@/lib/api-client'
+import { useParcels } from '@/lib/hooks/use-parcels'
+import { useSensors } from '@/lib/hooks/use-sensors'
+import { STATUS_CHIP, STATUS_LABEL, estadosPorParcela } from '@/lib/sensor-theme'
 
 export function ParcelsView() {
-  // 🗺️ Solo usamos navigate del contexto global, los datos vienen de PostgreSQL
-  const { navigate } = useApp()
-  
-  const [parcelas, setParcelas] = useState<Parcel[]>([])
-  const [cargando, setCargando] = useState(true)
+  const { navigate, focusParcelOnMap } = useApp()
+  const { parcels, setParcels, loading, error } = useParcels()
+  const { readings } = useSensors()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCrop, setFilterCrop] = useState<string>('all')
@@ -38,186 +43,74 @@ export function ParcelsView() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [parcelToDelete, setParcelToDelete] = useState<string | null>(null)
-  
-  const [editData, setEditData] = useState({
-    name: '',
-    cropType: '' as Parcel['cropType'],
-    soilStatus: '' as Parcel['soilStatus'],
-  })
+  const [editData, setEditData] = useState({ name: '', cropType: '' })
+  const [accionError, setAccionError] = useState<string | null>(null)
 
-  // 📡 Cargar las parcelas al iniciar la pantalla
-  useEffect(() => {
-    const obtenerParcelas = async () => {
-      try {
-        const sessionData = localStorage.getItem('agro-control-user')
-        if (!sessionData) return
-        const { token } = JSON.parse(sessionData)
+  // El estado del suelo se deriva de las lecturas actuales de cada parcela
+  const estados = useMemo(() => estadosPorParcela(readings), [readings])
+  const parcelasConEstado = parcels.map((p) => ({ ...p, soilStatus: estados[p.id] ?? p.soilStatus }))
 
-        const response = await fetch('http://localhost:4000/api/parcelas', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (response.ok) {
-          const resultado = await response.json()
-          const parcelasReales = resultado.data.map((p: any) => {
-            let coords: any[] = []
-            if (p.geom) {
-              try {
-                const geomObj = typeof p.geom === 'string' ? JSON.parse(p.geom) : p.geom
-                if (geomObj && geomObj.coordinates && geomObj.coordinates[0]) {
-                  coords = geomObj.coordinates[0].map((coord: any) => ({
-                    lat: coord[1],
-                    lng: coord[0]
-                  }))
-                  // Remove closing duplicate point from GeoJSON polygon if present
-                  if (coords.length > 1 && coords[0].lat === coords[coords.length - 1].lat && coords[0].lng === coords[coords.length - 1].lng) {
-                    coords.pop()
-                  }
-                }
-              } catch (e) {
-                console.error("Error parsing geom coordinates:", e)
-              }
-            }
-            return {
-              id: p.id,
-              name: p.nombre, 
-              cropType: p.cropType === 1 ? 'soya' : p.cropType === 2 ? 'maiz' : p.cropType === 3 ? 'trigo' : 'otros',
-              area: parseFloat(p.area),
-              soilStatus: 'optimo', 
-              coordinates: coords, 
-              createdAt: p.createdAt || new Date().toISOString() 
-            }
-          })
-          setParcelas(parcelasReales)
-        }
-      } catch (error) {
-        console.error("Error al cargar tus parcelas:", error)
-      } finally {
-        setCargando(false)
-      }
-    }
-
-    obtenerParcelas()
-  }, [])
-
-  const filteredParcels = parcelas.filter((parcel) => {
-    const matchesSearch = parcel.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredParcels = parcelasConEstado.filter((parcel) => {
+    const termino = searchTerm.toLowerCase()
+    const matchesSearch =
+      parcel.name.toLowerCase().includes(termino) ||
+      getCropNameById(parcel.cropType).toLowerCase().includes(termino) ||
+      (parcel.ubicacion_nombre ?? '').toLowerCase().includes(termino)
     const matchesCrop = filterCrop === 'all' || parcel.cropType === filterCrop
     return matchesSearch && matchesCrop
   })
 
-  const getStatusStyles = (status: Parcel['soilStatus']) => {
-    switch (status) {
-      case 'optimo': return 'bg-[var(--tertiary-container)] text-[var(--tertiary)]'
-      case 'alerta': return 'bg-warning-container text-[var(--warning)]'
-      case 'critico': return 'bg-error-container text-[var(--error)]'
-    }
-  }
-
-  const getCropIcon = (crop: Parcel['cropType']) => {
-    switch (crop) {
-      case 'soya': return 'nutrition'
-      case 'maiz': return 'grass'
-      case 'trigo': return 'grain'
-      default: return 'eco'
-    }
-  }
-
-  const getCropStyles = (crop: Parcel['cropType']) => {
-    switch (crop) {
-      case 'soya': return 'bg-[var(--tertiary)]/12 text-on-surface'
-      case 'maiz': return 'bg-[var(--warning)]/12 text-on-surface'
-      case 'trigo': return 'bg-[var(--warning)]/20 text-on-surface'
-      default: return 'bg-[var(--success)]/12 text-on-surface'
-    }
-  }
-
   const handleEditParcel = (parcel: Parcel) => {
     setSelectedParcel(parcel)
-    setEditData({
-      name: parcel.name,
-      cropType: parcel.cropType,
-      soilStatus: parcel.soilStatus,
-    })
+    setEditData({ name: parcel.name, cropType: parcel.cropType })
+    setAccionError(null)
     setShowEditDialog(true)
   }
 
-  // ✏️ Función conectada al backend para EDITAR
   const handleSaveEdit = async () => {
     if (!selectedParcel) return
-
     try {
-      const sessionData = localStorage.getItem('agro-control-user')
-      if (!sessionData) return
-      const { token } = JSON.parse(sessionData)
-
-      const response = await fetch(`http://localhost:4000/api/parcelas/${selectedParcel.id}`, {
+      await apiFetch(`/parcelas/${selectedParcel.id}`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({
-          name: editData.name,
-          cropType: editData.cropType
-        })
+        body: JSON.stringify({ name: editData.name, cropType: editData.cropType }),
       })
-
-      if (response.ok) {
-        // Actualizamos la pantalla instantáneamente
-        setParcelas(parcelas.map(p => 
-          p.id === selectedParcel.id 
-            ? { ...p, name: editData.name, cropType: editData.cropType, soilStatus: editData.soilStatus } 
-            : p
-        ))
-        setShowEditDialog(false)
-        setSelectedParcel(null)
-      }
-    } catch (error) {
-      console.error("Error al actualizar la parcela:", error)
+      setParcels(parcels.map((p) => (p.id === selectedParcel.id ? { ...p, name: editData.name, cropType: editData.cropType } : p)))
+      setShowEditDialog(false)
+      setSelectedParcel(null)
+    } catch (err) {
+      setAccionError(err instanceof Error ? err.message : 'No se pudo actualizar la parcela.')
     }
   }
 
-  // 🗑️ Función conectada al backend para ELIMINAR
   const handleDeleteConfirm = async () => {
     if (!parcelToDelete) return
-
     try {
-      const sessionData = localStorage.getItem('agro-control-user')
-      if (!sessionData) return
-      const { token } = JSON.parse(sessionData)
-
-      const response = await fetch(`http://localhost:4000/api/parcelas/${parcelToDelete}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (response.ok) {
-        // Quitamos la parcela de la lista en pantalla
-        setParcelas(parcelas.filter(p => p.id !== parcelToDelete))
-        setParcelToDelete(null)
-        setShowDeleteDialog(false)
-      }
-    } catch (error) {
-      console.error("Error al eliminar la parcela:", error)
+      await apiFetch(`/parcelas/${parcelToDelete}`, { method: 'DELETE' })
+      setParcels(parcels.filter((p) => p.id !== parcelToDelete))
+    } catch (err) {
+      setAccionError(err instanceof Error ? err.message : 'No se pudo eliminar la parcela.')
+    } finally {
+      setParcelToDelete(null)
+      setShowDeleteDialog(false)
     }
   }
 
-  const totalArea = parcelas.reduce((sum, p) => sum + p.area, 0)
+  const totalArea = parcels.reduce((sum, p) => sum + p.area, 0)
+  const optimas = parcelasConEstado.filter((p) => p.soilStatus === 'optimo').length
 
-  if (cargando) {
-    return <div className="flex justify-center items-center h-64 text-on-surface-variant font-medium">Cargando tus parcelas...</div>
-  }
+  const tarjetasResumen = [
+    { label: 'Total Parcelas', value: parcels.length.toString(), icon: 'grid_view', fondo: 'bg-[#e3eef8]', color: 'text-[var(--primary-container)]' },
+    { label: 'Hectáreas Totales', value: totalArea.toFixed(1), icon: 'landscape', fondo: 'bg-success-container', color: 'text-[var(--success)]' },
+    { label: 'Estado Óptimo', value: optimas.toString(), icon: 'check_circle', fondo: 'bg-success-container', color: 'text-[var(--success)]' },
+    { label: 'Requieren Atención', value: (parcels.length - optimas).toString(), icon: 'warning', fondo: 'bg-warning-container', color: 'text-[var(--warning)]' },
+  ]
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <header className="pt-4">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <p className="text-on-surface-variant text-sm font-medium uppercase tracking-wider mb-2">
-              Administración
-            </p>
+            <p className="text-on-surface-variant text-sm font-medium uppercase tracking-wider mb-2">Administración</p>
             <h1 className="text-display-md text-on-surface">Parcelas</h1>
           </div>
           <Button
@@ -230,144 +123,113 @@ export function ParcelsView() {
         </div>
       </header>
 
-      {/* Stats Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <Card className="bg-surface-lowest shadow-ambient border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[var(--tertiary)]/12 flex items-center justify-center">
-                <span className="material-symbols-outlined text-on-surface text-2xl">grid_view</span>
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        {tarjetasResumen.map((t) => (
+          <Card key={t.label} className="bg-surface-lowest shadow-ambient border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 flex-none rounded-xl flex items-center justify-center ${t.fondo}`}>
+                  <span className={`material-symbols-outlined text-2xl ${t.color}`}>{t.icon}</span>
+                </div>
+                <div>
+                  {loading ? <Skeleton className="w-12 h-9" /> : <p className="text-display-md text-on-surface leading-none">{t.value}</p>}
+                  <p className="text-sm text-on-surface-variant font-medium mt-1">{t.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-display-md text-on-surface leading-none">{parcelas.length}</p>
-                <p className="text-sm text-on-surface-variant font-medium mt-1">Total Parcelas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-surface-lowest shadow-ambient border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-success-container flex items-center justify-center">
-                <span className="material-symbols-outlined text-[var(--success)] text-2xl">landscape</span>
-              </div>
-              <div>
-                <p className="text-display-md text-on-surface leading-none">{totalArea.toFixed(1)}</p>
-                <p className="text-sm text-on-surface-variant font-medium mt-1">Hectáreas Totales</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-surface-lowest shadow-ambient border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-success-container flex items-center justify-center">
-                <span className="material-symbols-outlined text-[var(--success)] text-2xl">check_circle</span>
-              </div>
-              <div>
-                <p className="text-display-md text-on-surface leading-none">
-                  {parcelas.filter((p) => p.soilStatus === 'optimo').length}
-                </p>
-                <p className="text-sm text-on-surface-variant font-medium mt-1">Estado Óptimo</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-surface-lowest shadow-ambient border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-warning-container flex items-center justify-center">
-                <span className="material-symbols-outlined text-[var(--warning)] text-2xl">warning</span>
-              </div>
-              <div>
-                <p className="text-display-md text-on-surface leading-none">
-                  {parcelas.filter((p) => p.soilStatus !== 'optimo').length}
-                </p>
-                <p className="text-sm text-on-surface-variant font-medium mt-1">Requieren Atención</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
-      {/* Filters */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardContent className="p-5">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
-                search
-              </span>
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
               <Input
-                placeholder="Buscar parcelas..."
+                placeholder="Buscar por nombre, cultivo o municipio..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-surface-high border-0 h-11 rounded-lg"
               />
             </div>
             <Select value={filterCrop} onValueChange={setFilterCrop}>
-              <SelectTrigger className="w-full md:w-48 bg-surface-high border-0 h-11 rounded-lg">
+              <SelectTrigger className="w-full md:w-56 bg-surface-high border-0 h-11 rounded-lg">
                 <SelectValue placeholder="Filtrar por cultivo" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60 overflow-y-auto">
                 <SelectItem value="all">Todos los cultivos</SelectItem>
-                <SelectItem value="soya">Soya</SelectItem>
-                <SelectItem value="maiz">Maíz</SelectItem>
-                <SelectItem value="trigo">Trigo</SelectItem>
-                <SelectItem value="otros">Otros</SelectItem>
+                {CULTIVOS_CIAT_SANTA_CRUZ.map((c) => (
+                  <SelectItem key={c.tipo_cultivo_id} value={c.tipo_cultivo_id.toString()}>
+                    {c.nombre}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Parcels Grid */}
-      {filteredParcels.length > 0 ? (
+      {(error || accionError) && (
+        <p className="text-sm text-[var(--error)] flex items-center gap-2">
+          <span className="material-symbols-outlined text-base">error</span>{accionError || error}
+        </p>
+      )}
+
+      {loading ? (
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredParcels.map((parcel) => (
-            <Card
-              key={parcel.id}
-              className="bg-surface-lowest shadow-ambient border-0 hover:shadow-elevated transition-smooth group"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl ${getCropStyles(parcel.cropType)} flex items-center justify-center`}>
-                      <span className="material-symbols-outlined text-2xl">{getCropIcon(parcel.cropType)}</span>
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg font-semibold text-on-surface">{parcel.name}</CardTitle>
-                      <CardDescription className="capitalize text-on-surface-variant">{parcel.cropType}</CardDescription>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-sm ${getStatusStyles(parcel.soilStatus)}`}>
-                    {parcel.soilStatus === 'optimo' ? 'Óptimo' : parcel.soilStatus === 'alerta' ? 'Alerta' : 'Crítico'}
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-80 rounded-xl" />)}
+        </section>
+      ) : filteredParcels.length > 0 ? (
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredParcels.map((parcel) => {
+            const color = getCropColor(parcel.cropType)
+            return (
+              <Card key={parcel.id} className="bg-surface-lowest shadow-ambient border-0 hover:shadow-elevated transition-smooth group overflow-hidden p-0 gap-0">
+                <button
+                  type="button"
+                  onClick={() => focusParcelOnMap(parcel.id)}
+                  className="relative block w-full aspect-[5/3] overflow-hidden"
+                  aria-label={`Ver ${parcel.name} en el mapa`}
+                >
+                  <ParcelShape coordinates={parcel.coordinates} color={color} className="w-full h-full transition-smooth group-hover:scale-[1.03]" />
+                  <span className={`absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-sm shadow-sm ${STATUS_CHIP[parcel.soilStatus]}`}>
+                    {STATUS_LABEL[parcel.soilStatus]}
                   </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-5">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-surface-low rounded-lg p-4">
-                      <p className="text-xs text-on-surface-variant font-medium">Área</p>
-                      <p className="text-xl font-bold text-on-surface mt-1">{parcel.area.toFixed(2)} ha</p>
+                  <span className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-surface-lowest/90 rounded-full pl-1.5 pr-2.5 py-1 text-xs font-semibold text-on-surface shadow-sm">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                    {getCropNameById(parcel.cropType)}
+                  </span>
+                </button>
+
+                <CardContent className="p-5 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-on-surface leading-snug">{parcel.name}</h3>
+                    <p className="text-sm text-on-surface-variant flex items-center gap-1 mt-1">
+                      <span className="material-symbols-outlined text-base">location_on</span>
+                      {parcel.ubicacion_nombre || 'Ubicación no registrada'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-surface-low rounded-lg p-3">
+                      <p className="text-xs text-on-surface-variant font-medium">Superficie</p>
+                      <p className="text-lg font-bold text-on-surface mt-0.5">{parcel.area.toFixed(2)} ha</p>
                     </div>
-                    <div className="bg-surface-low rounded-lg p-4">
-                      <p className="text-xs text-on-surface-variant font-medium">Puntos GPS</p>
-                      <p className="text-xl font-bold text-on-surface mt-1">GeoJSON</p>
+                    <div className="bg-surface-low rounded-lg p-3">
+                      <p className="text-xs text-on-surface-variant font-medium">Registrada</p>
+                      <p className="text-lg font-bold text-on-surface mt-0.5">
+                        {parcel.createdAt ? new Date(parcel.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' }) : '—'}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-                    <span className="material-symbols-outlined text-base">calendar_today</span>
-                    <span>Creada: {new Date(parcel.createdAt).toLocaleDateString('es-ES')}</span>
-                  </div>
-
-                  <div className="flex gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-smooth">
+                  {/* Siempre visibles en pantallas táctiles; en escritorio aparecen al pasar el cursor */}
+                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-smooth">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate('map')}
+                      onClick={() => focusParcelOnMap(parcel.id)}
                       className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
                     >
                       <span className="material-symbols-outlined text-base mr-1">map</span>
@@ -378,6 +240,7 @@ export function ParcelsView() {
                       size="sm"
                       onClick={() => handleEditParcel(parcel)}
                       className="bg-surface-high border-0 hover:bg-surface-container"
+                      aria-label="Editar parcela"
                     >
                       <span className="material-symbols-outlined text-base">edit</span>
                     </Button>
@@ -389,14 +252,15 @@ export function ParcelsView() {
                         setShowDeleteDialog(true)
                       }}
                       className="bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)]"
+                      aria-label="Eliminar parcela"
                     >
                       <span className="material-symbols-outlined text-base">delete</span>
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </section>
       ) : (
         <Card className="bg-surface-lowest shadow-ambient border-0">
@@ -409,9 +273,7 @@ export function ParcelsView() {
                 {searchTerm || filterCrop !== 'all' ? 'No se encontraron parcelas' : 'Sin parcelas registradas'}
               </h3>
               <p className="text-on-surface-variant mb-6">
-                {searchTerm || filterCrop !== 'all'
-                  ? 'Intenta con otros filtros de búsqueda'
-                  : 'Comienza creando tu primera parcela en el mapa'}
+                {searchTerm || filterCrop !== 'all' ? 'Intenta con otros filtros de búsqueda' : 'Comienza creando tu primera parcela en el mapa'}
               </p>
               {!searchTerm && filterCrop === 'all' && (
                 <Button
@@ -427,12 +289,14 @@ export function ParcelsView() {
         </Card>
       )}
 
-      {/* Edit Dialog */}
+      {/* Editar */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
             <DialogTitle className="text-headline text-on-surface">Editar Parcela</DialogTitle>
-            <DialogDescription className="text-on-surface-variant">Modifica los datos de tu parcela</DialogDescription>
+            <DialogDescription className="text-on-surface-variant">
+              El estado del suelo se calcula automáticamente a partir de los sensores.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-4">
             <div className="space-y-2">
@@ -445,37 +309,20 @@ export function ParcelsView() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-on-surface">Tipo de Cultivo</label>
-              <Select
-                value={editData.cropType}
-                onValueChange={(value) => setEditData({ ...editData, cropType: value as Parcel['cropType'] })}
-              >
+              <Select value={editData.cropType} onValueChange={(value) => setEditData({ ...editData, cropType: value })}>
                 <SelectTrigger className="bg-surface-high border-0 h-11 rounded-lg">
-                  <SelectValue />
+                  <SelectValue placeholder="Seleccione cultivo" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="soya">Soya</SelectItem>
-                  <SelectItem value="maiz">Maíz</SelectItem>
-                  <SelectItem value="trigo">Trigo</SelectItem>
-                  <SelectItem value="otros">Otros</SelectItem>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  {CULTIVOS_CIAT_SANTA_CRUZ.map((c) => (
+                    <SelectItem key={c.tipo_cultivo_id} value={c.tipo_cultivo_id.toString()}>
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-on-surface">Estado del Suelo</label>
-              <Select
-                value={editData.soilStatus}
-                onValueChange={(value) => setEditData({ ...editData, soilStatus: value as Parcel['soilStatus'] })}
-              >
-                <SelectTrigger className="bg-surface-high border-0 h-11 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="optimo">Óptimo</SelectItem>
-                  <SelectItem value="alerta">Alerta</SelectItem>
-                  <SelectItem value="critico">Crítico</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {accionError && <p className="text-xs text-[var(--error)]">{accionError}</p>}
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowEditDialog(false)} className="bg-surface-high border-0">
@@ -483,6 +330,7 @@ export function ParcelsView() {
             </Button>
             <Button
               onClick={handleSaveEdit}
+              disabled={!editData.name.trim()}
               className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] rounded-xl border-0"
             >
               Guardar Cambios
@@ -491,7 +339,7 @@ export function ParcelsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Eliminar */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="border-0 shadow-elevated">
           <AlertDialogHeader>
@@ -502,10 +350,7 @@ export function ParcelsView() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="bg-surface-high border-0">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-[var(--error)] hover:bg-[var(--error)]/90 border-0"
-            >
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-[var(--error)] hover:bg-[var(--error)]/90 border-0">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

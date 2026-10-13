@@ -3,47 +3,59 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Paleta institucional CIAT (https://www.ciatbo.org):
+ *   Azul marino  #002147  - autoridad, superficies oscuras (logo "50")
+ *   Azul CIAT    #005293  - marca principal (logo "CIAT")
+ *   Verde CIAT   #2b8412  - acento sobre fondos claros (hojas del logo)
+ *   Verde hoja   #8dc63f  - acento sobre fondos oscuros (contraste 7.9:1 sobre azul marino)
+ *   Verde menta  #0cbc87  - acento secundario / datos
+ */
 :root {
 
-  --primary: #012d1d;                    /* Deep moss green - authority, depth */
-  --primary-container: #0a5c3a;          /* Container variant */
-  --primary-fixed-dim: #1a4d3a;          /* Inactive sensor states */
+  --primary: #002147;                    /* Azul marino CIAT - autoridad, profundidad */
+  --primary-container: #005293;          /* Azul CIAT */
+  --primary-fixed-dim: #1a3050;          /* Estados inactivos de sensores */
   
-  --secondary: #4b616e;                  /* Earthy Slate - data viz, secondary actions */
-  --secondary-container: #6b818e;
+  --secondary: #46607a;                  /* Pizarra azulada - visualización de datos, acciones secundarias */
+  --secondary-container: #6a8299;
   
-  --tertiary: #b2d414;                   /* Vibrant Lime - status, active states, vital "Go" */
-  --tertiary-container: #012d1d;         /* Dark container for lime text */
-  --tertiary-fixed: #c4e817;             /* Attention Required states */
-  --tertiary-fixed-dim: #9fc012;         /* Dim lime variant */
+  --tertiary: #2b8412;                   /* Verde CIAT - estados activos, acción principal */
+  --tertiary-container: #e9f5e4;         /* Fondo claro para chips verdes */
+  --tertiary-fixed: #3a9a1e;             /* Hover / atención */
+  --tertiary-fixed-dim: #1f6b0e;         /* Variante oscura */
+  --tertiary-light: #8dc63f;             /* Verde hoja para fondos oscuros */
+  
+  --brand-mint: #0cbc87;                 /* Verde menta CIAT */
+
   
   /* Surface Hierarchy - Tonal Layering */
-  --background: #f4fafd;                 /* Canvas */
-  --surface: #f4fafd;                    /* Base surface */
-  --surface-container-low: #eef5f7;      /* Large structural sections */
-  --surface-container: #e8eff1;          /* Mid-level containers */
-  --surface-container-high: #e2e9eb;     /* Input backgrounds */
-  --surface-container-highest: #dce3e5;  /* Highest elevation inputs */
+  --background: #f4f7fb;                 /* Canvas */
+  --surface: #f4f7fb;                    /* Base surface */
+  --surface-container-low: #edf2f7;      /* Large structural sections */
+  --surface-container: #e6edf3;          /* Mid-level containers */
+  --surface-container-high: #e0e8ef;     /* Input backgrounds */
+  --surface-container-highest: #d9e2ea;  /* Highest elevation inputs */
   --surface-container-lowest: #ffffff;   /* Top layer - interactive cards, inputs */
   
   /* On-Surface Colors */
-  --on-surface: #161d1f;                 /* Primary text - NEVER pure black */
-  --on-surface-variant: #4b616e;         /* Secondary text */
-  --on-primary: #f4fafd;                 /* Text on primary */
-  --on-tertiary-fixed: #012d1d;          /* Dark text on lime */
+  --on-surface: #12203a;                 /* Primary text - NEVER pure black */
+  --on-surface-variant: #4f6378;         /* Secondary text */
+  --on-primary: #f4f7fb;                 /* Text on primary */
+  --on-tertiary-fixed: #ffffff;          /* Texto sobre verde CIAT */
   
   /* Status Colors */
-  --success: #22c55e;
-  --success-container: #dcfce7;
-  --warning: #eab308;
-  --warning-container: #fef9c3;
+  --success: #2b8412;
+  --success-container: #e9f5e4;
+  --warning: #d97706;
+  --warning-container: #fef3c7;
   --error: #dc2626;
   --error-container: #fee2e2;
   --on-error-container: #991b1b;
   
   /* Outline - Ghost Borders */
-  --outline: rgba(22, 29, 31, 0.15);     /* 15% on-surface for ghost borders */
-  --outline-variant: rgba(22, 29, 31, 0.08);
+  --outline: rgba(18, 32, 58, 0.15);     /* 15% on-surface for ghost borders */
+  --outline-variant: rgba(18, 32, 58, 0.08);
   
   /* Mapped to shadcn tokens */
   --foreground: var(--on-surface);
@@ -52,7 +64,7 @@
   --popover: var(--surface-container-lowest);
   --popover-foreground: var(--on-surface);
   --primary-foreground: var(--on-primary);
-  --secondary-foreground: #f4fafd;
+  --secondary-foreground: #f4f7fb;
   --muted: var(--surface-container-low);
   --muted-foreground: var(--on-surface-variant);
   --accent: var(--tertiary);
@@ -61,14 +73,14 @@
   --destructive-foreground: #ffffff;
   --border: var(--outline-variant);
   --input: var(--surface-container-highest);
-  --ring: var(--tertiary);
+  --ring: var(--primary-container);
   
   /* Charts */
   --chart-1: var(--tertiary);
-  --chart-2: var(--secondary);
-  --chart-3: var(--primary);
-  --chart-4: var(--success);
-  --chart-5: #86efac;
+  --chart-2: var(--primary-container);
+  --chart-3: var(--brand-mint);
+  --chart-4: var(--primary);
+  --chart-5: var(--tertiary-light);
   
   /* Shape */
   --radius: 0.75rem;                     /* md = 12px for cards */
@@ -77,30 +89,44 @@
   
   /* Sidebar - Dark variant */
   --sidebar: var(--primary);
-  --sidebar-foreground: #f4fafd;
-  --sidebar-primary: var(--tertiary);
-  --sidebar-primary-foreground: var(--on-tertiary-fixed);
-  --sidebar-accent: rgba(178, 212, 20, 0.12);
-  --sidebar-accent-foreground: #f4fafd;
-  --sidebar-border: rgba(178, 212, 20, 0.15);
-  --sidebar-ring: var(--tertiary);
+  --sidebar-foreground: #f4f7fb;
+  --sidebar-primary: var(--tertiary-light);
+  --sidebar-primary-foreground: var(--primary);
+  --sidebar-accent: rgba(141, 198, 63, 0.12);
+  --sidebar-accent-foreground: #f4f7fb;
+  --sidebar-border: rgba(141, 198, 63, 0.15);
+  --sidebar-ring: var(--tertiary-light);
   
   /* Shadows - Ambient only, never pure black */
-  --shadow-ambient: 0 12px 40px rgba(22, 29, 31, 0.06);
-  --shadow-elevated: 0 8px 24px rgba(22, 29, 31, 0.08);
+  --shadow-ambient: 0 12px 40px rgba(0, 33, 71, 0.07);
+  --shadow-elevated: 0 8px 24px rgba(0, 33, 71, 0.10);
+}
+
+/*
+ * Superficies oscuras (barra lateral, login, navegación móvil): el acento pasa al
+ * verde hoja para conservar el contraste, y el texto sobre el acento a azul marino.
+ */
+.surface-dark,
+.dark {
+  --tertiary: #8dc63f;
+  --tertiary-fixed: #a6d65e;
+  --tertiary-fixed-dim: #7cb534;
+  --tertiary-container: rgba(141, 198, 63, 0.14);
+  --on-tertiary-fixed: #002147;
+  --ring: #8dc63f;
 }
 
 .dark {
   --background: var(--primary);
   --surface: var(--primary);
-  --surface-container-low: #022b1c;
-  --surface-container: #0a3d2a;
-  --surface-container-high: #0f4d36;
-  --surface-container-highest: #145d42;
-  --surface-container-lowest: #1a6b4d;
+  --surface-container-low: #031d3d;
+  --surface-container: #0a2b52;
+  --surface-container-high: #103762;
+  --surface-container-highest: #164473;
+  --surface-container-lowest: #0d3159;
   
-  --on-surface: #f4fafd;
-  --on-surface-variant: #a8c4b8;
+  --on-surface: #f4f7fb;
+  --on-surface-variant: #a8bdd4;
   
   --foreground: var(--on-surface);
   --card: var(--surface-container);
@@ -110,13 +136,13 @@
   --muted: var(--surface-container-low);
   --muted-foreground: var(--on-surface-variant);
   
-  --outline: rgba(178, 212, 20, 0.15);
-  --outline-variant: rgba(178, 212, 20, 0.08);
+  --outline: rgba(168, 189, 212, 0.18);
+  --outline-variant: rgba(168, 189, 212, 0.10);
   --border: var(--outline-variant);
   --input: var(--surface-container-high);
   
-  --sidebar: #011a11;
-  --sidebar-border: rgba(178, 212, 20, 0.12);
+  --sidebar: #00162f;
+  --sidebar-border: rgba(141, 198, 63, 0.12);
 }
 
 @theme inline {
@@ -177,6 +203,8 @@
   
   /* Semantic colors */
   --color-tertiary: var(--tertiary);
+  --color-tertiary-light: var(--tertiary-light);
+  --color-brand-mint: var(--brand-mint);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-error: var(--error);
@@ -233,7 +261,7 @@
   }
   
   .glass-dark {
-    background: rgba(1, 45, 29, 0.85);
+    background: rgba(0, 33, 71, 0.88);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
@@ -308,7 +336,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(22, 29, 31, 0.25);
+  background: rgba(18, 32, 58, 0.25);
 }
 
 /* Material Symbols */

@@ -1,0 +1,4 @@
+# Vercel solo construye la interfaz Next.js de la raíz
+backend/
+android/
+coverage/

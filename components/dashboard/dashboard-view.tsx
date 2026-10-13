@@ -1,211 +1,120 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@/lib/app-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
+import { apiFetch } from '@/lib/api-client'
+import { useParcels } from '@/lib/hooks/use-parcels'
+import { useSensors } from '@/lib/hooks/use-sensors'
+import { getCropColor, getCropNameById } from '@/lib/crops'
+import { SENSOR_THEME, SENSOR_TYPES, STATUS_CHIP, STATUS_LABEL, estadosPorParcela, peorEstado } from '@/lib/sensor-theme'
+import type { SoilStatus } from '@/lib/types'
 
-interface SensorMetric {
-  label: string
-  value: number
-  unit: string
+interface Recomendacion {
+  text: string
   icon: string
-  status: 'optimo' | 'alerta' | 'critico'
+  priority: 'success' | 'warning' | 'info'
+}
+
+// Un sensor se considera en línea si reportó en los últimos 2 minutos (el nodo envía cada 15 s)
+const UMBRAL_EN_LINEA_MS = 2 * 60 * 1000
+
+/** "Ing. José Pérez" -> "Ing. José"; "María López" -> "María" */
+function nombreParaSaludo(nombre?: string) {
+  const palabras = (nombre || '').trim().split(/\s+/).filter(Boolean)
+  if (palabras.length === 0) return 'Usuario'
+  return palabras[0].endsWith('.') && palabras[1] ? `${palabras[0]} ${palabras[1]}` : palabras[0]
+}
+
+function saludoSegunHora() {
+  const hora = new Date().getHours()
+  if (hora < 12) return 'Buenos días'
+  if (hora < 19) return 'Buenas tardes'
+  return 'Buenas noches'
+}
+
+const estadoPorRango = (valor: number, optimo: { min: number; max: number }, alerta: { min: number; max: number }): SoilStatus => {
+  if (valor < alerta.min || valor > alerta.max) return 'critico'
+  if (valor < optimo.min || valor > optimo.max) return 'alerta'
+  return 'optimo'
 }
 
 export function DashboardView() {
-  const { state, navigate, setParcels } = useApp()
-  const [metrics, setMetrics] = useState<SensorMetric[]>([
-    { label: 'Humedad del Suelo', value: 68, unit: '%', icon: 'water_drop', status: 'optimo' },
-    { label: 'Temperatura', value: 24, unit: '°C', icon: 'thermostat', status: 'optimo' },
-    { label: 'Índice de Salud', value: 85, unit: '%', icon: 'local_florist', status: 'optimo' },
-    { label: 'Estado Sistema', value: 100, unit: '%', icon: 'memory', status: 'optimo' },
-  ])
-  const [recommendations, setRecommendations] = useState<any[]>([
-    { text: 'Calculando sugerencias del CIAT...', icon: 'psychology', priority: 'info' },
-    { text: 'Monitoreando telemetría de suelo...', icon: 'eco', priority: 'success' },
-    { text: 'Analizando nutrientes y humedad...', icon: 'info', priority: 'info' },
-  ])
-  const [chatQuestion, setChatQuestion] = useState('')
-  const [chatAnswer, setChatAnswer] = useState<string | null>(null)
-  const [isChatLoading, setIsChatLoading] = useState(false)
+  const { state, navigate } = useApp()
+  const { parcels, loading: cargandoParcelas, error: errorParcelas } = useParcels()
+  const { readings, loading: cargandoSensores, actualizado } = useSensors()
+  const [recomendaciones, setRecomendaciones] = useState<Recomendacion[] | null>(null)
 
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chatQuestion.trim()) return
-
-    setIsChatLoading(true)
-    setChatAnswer(null)
-
-    try {
-      const sessionData = localStorage.getItem('agro-control-user')
-      if (!sessionData) return
-      const { token } = JSON.parse(sessionData)
-
-      const response = await fetch('http://localhost:4000/api/ia/chat', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ pregunta: chatQuestion, recomendaciones })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setChatAnswer(result.respuesta)
-      } else {
-        setChatAnswer('Error: No se pudo obtener respuesta del agrónomo virtual.')
-      }
-    } catch (err) {
-      setChatAnswer('Error de conexión con el asistente de IA.')
-    } finally {
-      setIsChatLoading(false)
-    }
-  }
-
-  // Cargar sugerencias agronómicas (reglas/Gemini) desde el Backend
+  // Recomendaciones del motor de reglas agronómicas (cada 15 s)
   useEffect(() => {
-    const obtenerRecomendaciones = async () => {
+    let activo = true
+    const cargar = async () => {
       try {
-        const sessionData = localStorage.getItem('agro-control-user')
-        if (!sessionData) return
-        const { token } = JSON.parse(sessionData)
-
-        const response = await fetch('http://localhost:4000/api/ia/recomendaciones', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (response.ok) {
-          const resultado = await response.json()
-          setRecommendations(resultado.data)
-        }
-      } catch (error) {
-        console.error("Error al obtener recomendaciones de la IA:", error)
+        const resultado = await apiFetch<{ data: Recomendacion[] }>('/reglas/recomendaciones')
+        if (activo) setRecomendaciones(resultado.data)
+      } catch {
+        if (activo) setRecomendaciones((prev) => prev ?? [])
       }
     }
-
-    obtenerRecomendaciones()
-    const interval = setInterval(obtenerRecomendaciones, 15000)
-    return () => clearInterval(interval)
+    cargar()
+    const intervalo = setInterval(cargar, 15000)
+    return () => {
+      activo = false
+      clearInterval(intervalo)
+    }
   }, [])
 
-  // Cargar parcelas reales desde la Base de Datos
-  useEffect(() => {
-    const obtenerParcelas = async () => {
-      try {
-        const sessionData = localStorage.getItem('agro-control-user')
-        if (!sessionData) return
-        const { token } = JSON.parse(sessionData)
+  const estados = useMemo(() => estadosPorParcela(readings), [readings])
 
-        const response = await fetch('http://localhost:4000/api/parcelas', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (response.ok) {
-          const resultado = await response.json()
-          const parcelasReales = resultado.data.map((p: any) => ({
-            id: p.id,
-            name: p.nombre, 
-            cropType: p.cropType === 1 ? 'soya' : p.cropType === 2 ? 'maiz' : p.cropType === 3 ? 'trigo' : 'otros',
-            area: parseFloat(p.area),
-            soilStatus: 'optimo', 
-            createdAt: p.createdAt || new Date().toISOString() 
-          }))
-          setParcels(parcelasReales)
-        }
-      } catch (error) {
-        console.error("Error al cargar parcelas en el dashboard:", error)
-      }
+  const metricas = useMemo(() => {
+    if (readings.length === 0) return null
+    const promedio = (tipo: string) => {
+      const valores = readings.filter((r) => r.type === tipo).map((r) => r.value)
+      return valores.length ? valores.reduce((a, b) => a + b, 0) / valores.length : 0
     }
+    const humedad = promedio('humidity')
+    const temperatura = promedio('temperature')
+    const salud = (readings.filter((r) => r.status === 'optimo').length / readings.length) * 100
+    const enLinea = readings.filter((r) => Date.now() - r.lastUpdate.getTime() < UMBRAL_EN_LINEA_MS).length
+    const porcentajeEnLinea = (enLinea / readings.length) * 100
 
-    obtenerParcelas()
-  }, [setParcels])
+    return [
+      {
+        label: 'Humedad del Suelo', value: Math.round(humedad), unit: '%', icon: 'water_drop',
+        color: SENSOR_THEME.humidity.color, soft: SENSOR_THEME.humidity.soft, progreso: humedad,
+        status: estadoPorRango(humedad, { min: 40, max: 70 }, { min: 30, max: 80 }),
+      },
+      {
+        label: 'Temperatura', value: Math.round(temperatura), unit: '°C', icon: 'thermostat',
+        color: SENSOR_THEME.temperature.color, soft: SENSOR_THEME.temperature.soft, progreso: (temperatura / 50) * 100,
+        status: estadoPorRango(temperatura, { min: 18, max: 28 }, { min: 12, max: 35 }),
+      },
+      {
+        label: 'Índice de Salud', value: Math.round(salud), unit: '%', icon: 'local_florist',
+        color: '#2b8412', soft: '#e9f5e4', progreso: salud,
+        status: (salud < 50 ? 'critico' : salud < 75 ? 'alerta' : 'optimo') as SoilStatus,
+      },
+      {
+        label: 'Sensores en Línea', value: enLinea, unit: `de ${readings.length}`, icon: 'router',
+        color: '#005293', soft: '#e3eef8', progreso: porcentajeEnLinea,
+        status: (porcentajeEnLinea < 50 ? 'critico' : porcentajeEnLinea < 100 ? 'alerta' : 'optimo') as SoilStatus,
+      },
+    ]
+  }, [readings])
 
-  // Cargar sensores de la base de datos para calcular métricas promedio
-  useEffect(() => {
-    const obtenerSensores = async () => {
-      try {
-        const sessionData = localStorage.getItem('agro-control-user')
-        if (!sessionData) return
-        const { token } = JSON.parse(sessionData)
-
-        const response = await fetch('http://localhost:4000/api/sensores', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-
-        if (response.ok) {
-          const resultado = await response.json()
-          const readings = resultado.data
-
-          if (readings.length > 0) {
-            const humidities = readings.filter((s: any) => s.type === 'humidity')
-            const temperatures = readings.filter((s: any) => s.type === 'temperature')
-            
-            const avgHum = humidities.reduce((sum: number, s: any) => sum + s.value, 0) / (humidities.length || 1)
-            const avgTemp = temperatures.reduce((sum: number, s: any) => sum + s.value, 0) / (temperatures.length || 1)
-            
-            const optimos = readings.filter((s: any) => s.status === 'optimo').length
-            const healthIndex = (optimos / readings.length) * 100
-
-            // Determine status for averages
-            let humStatus: 'optimo' | 'alerta' | 'critico' = 'optimo'
-            if (avgHum < 30 || avgHum > 80) humStatus = 'critico'
-            else if (avgHum < 40 || avgHum > 70) humStatus = 'alerta'
-
-            let tempStatus: 'optimo' | 'alerta' | 'critico' = 'optimo'
-            if (avgTemp < 12 || avgTemp > 35) tempStatus = 'critico'
-            else if (avgTemp < 18 || avgTemp > 28) tempStatus = 'alerta'
-
-            let healthStatus: 'optimo' | 'alerta' | 'critico' = 'optimo'
-            if (healthIndex < 50) healthStatus = 'critico'
-            else if (healthIndex < 75) healthStatus = 'alerta'
-
-            setMetrics([
-              { label: 'Humedad del Suelo', value: Math.round(avgHum), unit: '%', icon: 'water_drop', status: humStatus },
-              { label: 'Temperatura', value: Math.round(avgTemp), unit: '°C', icon: 'thermostat', status: tempStatus },
-              { label: 'Índice de Salud', value: Math.round(healthIndex), unit: '%', icon: 'local_florist', status: healthStatus },
-              { label: 'Estado Sistema', value: 100, unit: '%', icon: 'memory', status: 'optimo' },
-            ])
-          }
-        }
-      } catch (error) {
-        console.error("Error al cargar sensores en el dashboard:", error)
-      }
-    }
-
-    obtenerSensores()
-    const interval = setInterval(obtenerSensores, 15000)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Status colors following Design System - tertiary for active/good, error for critical
-  const getStatusStyles = (status: 'optimo' | 'alerta' | 'critico') => {
-    switch (status) {
-      case 'optimo':
-        return {
-          chip: 'bg-[var(--tertiary-container)] text-[var(--tertiary)]',
-          icon: 'text-[var(--tertiary)] bg-[var(--tertiary)]/10',
-          fill: 'bg-[var(--tertiary)]',
-        }
-      case 'alerta':
-        return {
-          chip: 'bg-warning-container text-[var(--warning)]',
-          icon: 'text-[var(--warning)] bg-[var(--warning)]/10',
-          fill: 'bg-[var(--warning)]',
-        }
-      case 'critico':
-        return {
-          chip: 'bg-error-container text-[var(--error)]',
-          icon: 'text-[var(--error)] bg-[var(--error)]/10',
-          fill: 'bg-[var(--error)]',
-        }
-    }
-  }
+  const resumenPorTipo = useMemo(
+    () =>
+      SENSOR_TYPES.map((tipo) => {
+        const delTipo = readings.filter((r) => r.type === tipo)
+        const promedio = delTipo.length ? delTipo.reduce((s, r) => s + r.value, 0) / delTipo.length : null
+        return { tipo, cantidad: delTipo.length, promedio, estado: peorEstado(delTipo.map((r) => r.status)) }
+      }),
+    [readings]
+  )
 
   return (
     <div className="space-y-8">
-      {/* Header - Editorial typography with asymmetry */}
       <header className="pt-4">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
@@ -213,66 +122,78 @@ export function DashboardView() {
               Panel de Control
             </p>
             <h1 className="text-display-md text-on-surface">
-              Bienvenido, {state.user?.name?.split(' ')[0] || 'Usuario'}
+              {saludoSegunHora()}, {nombreParaSaludo(state.user?.name)}
             </h1>
           </div>
           <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-            <span className="material-symbols-outlined text-base">schedule</span>
-            <span>Última actualización: {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="w-2 h-2 rounded-full bg-[var(--success)] sensor-pulse" />
+            <span>
+              {actualizado
+                ? `Actualizado a las ${actualizado.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })}`
+                : 'Conectando con los sensores...'}
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Metrics Cards - Tonal layering, no borders */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {metrics.map((metric) => {
-          const styles = getStatusStyles(metric.status)
-          return (
-            <Card 
-              key={metric.label} 
-              className="bg-surface-lowest shadow-ambient border-0 hover:shadow-elevated transition-smooth"
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-5">
-                  <div className={`p-3 rounded-lg ${styles.icon} ${metric.status === 'optimo' ? 'sensor-pulse' : ''}`}>
-                    <span className="material-symbols-outlined text-2xl">{metric.icon}</span>
+      {/* Métricas */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        {cargandoSensores
+          ? Array.from({ length: 4 }, (_, i) => (
+              <Card key={i} className="bg-surface-lowest shadow-ambient border-0">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between"><Skeleton className="w-12 h-12 rounded-lg" /><Skeleton className="w-16 h-6" /></div>
+                  <Skeleton className="w-28 h-4" />
+                  <Skeleton className="w-20 h-10" />
+                  <Skeleton className="w-full h-1.5" />
+                </CardContent>
+              </Card>
+            ))
+          : metricas
+          ? metricas.map((m) => (
+              <Card key={m.label} className="bg-surface-lowest shadow-ambient border-0 hover:shadow-elevated transition-smooth">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start justify-between mb-4 sm:mb-5">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: m.soft, color: m.color }}>
+                      <span className="material-symbols-outlined text-2xl">{m.icon}</span>
+                    </div>
+                    <span className={`text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-1 rounded-sm ${STATUS_CHIP[m.status]}`}>
+                      {STATUS_LABEL[m.status]}
+                    </span>
                   </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-sm ${styles.chip}`}>
-                    {metric.status === 'optimo' ? 'Óptimo' : metric.status === 'alerta' ? 'Alerta' : 'Crítico'}
-                  </span>
-                </div>
-                <p className="text-on-surface-variant text-sm font-medium">{metric.label}</p>
-                {/* Display typography for big data */}
-                <p className="text-display-md text-on-surface mt-1">
-                  {metric.value}
-                  <span className="text-lg font-normal text-on-surface-variant ml-1">{metric.unit}</span>
-                </p>
-                <div className="mt-5">
-                  <Progress 
-                    value={metric.label === 'Temperatura' ? ((metric.value - 10) / 30) * 100 : metric.value} 
-                    className="h-1.5 bg-surface-container"
-                    indicatorClassName={styles.fill}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+                  <p className="text-on-surface-variant text-sm font-medium">{m.label}</p>
+                  <p className="text-[2rem] sm:text-[2.5rem] font-display font-bold tracking-tight leading-tight text-on-surface mt-1">
+                    {m.value}
+                    <span className="text-sm sm:text-lg font-normal text-on-surface-variant ml-1">{m.unit}</span>
+                  </p>
+                  <div className="mt-5 h-1.5 rounded-full bg-surface-container overflow-hidden">
+                    <div className="h-full rounded-full transition-smooth" style={{ width: `${Math.min(100, Math.max(0, m.progreso))}%`, backgroundColor: m.color }} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          : (
+              <Card className="col-span-2 lg:col-span-4 bg-surface-lowest shadow-ambient border-0">
+                <CardContent className="p-6 flex items-center gap-3 text-on-surface-variant">
+                  <span className="material-symbols-outlined">sensors_off</span>
+                  Aún no hay lecturas de sensores. Registra una parcela para comenzar el monitoreo.
+                </CardContent>
+              </Card>
+            )}
       </section>
 
-      {/* Main Content Grid - Generous spacing (spacing-8) */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Parcels Overview - Surface layering */}
+        {/* Parcelas */}
         <Card className="lg:col-span-2 bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-headline text-on-surface">Parcelas Registradas</CardTitle>
-                <CardDescription className="text-on-surface-variant mt-1">Estado actual de tus cultivos</CardDescription>
+                <CardDescription className="text-on-surface-variant mt-1">Estado del suelo según las últimas lecturas</CardDescription>
               </div>
               <button
                 onClick={() => navigate('parcels')}
-                className="text-[var(--tertiary)] hover:text-[var(--tertiary-fixed-dim)] font-medium text-sm flex items-center gap-1 transition-smooth"
+                className="flex-none whitespace-nowrap text-[var(--tertiary)] hover:text-[var(--tertiary-fixed-dim)] font-medium text-sm flex items-center gap-1 transition-smooth"
               >
                 Ver todas
                 <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -280,27 +201,32 @@ export function DashboardView() {
             </div>
           </CardHeader>
           <CardContent>
-            {state.parcels.length > 0 ? (
+            {cargandoParcelas ? (
               <div className="space-y-3">
-                {state.parcels.slice(0, 4).map((parcel) => {
-                  const styles = getStatusStyles(parcel.soilStatus)
+                {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-[76px] w-full rounded-lg" />)}
+              </div>
+            ) : errorParcelas ? (
+              <p className="text-sm text-[var(--error)] flex items-center gap-2">
+                <span className="material-symbols-outlined text-base">error</span>{errorParcelas}
+              </p>
+            ) : parcels.length > 0 ? (
+              <div className="space-y-3">
+                {parcels.slice(0, 4).map((parcel) => {
+                  const estado = estados[parcel.id] ?? 'optimo'
+                  const color = getCropColor(parcel.cropType)
                   return (
-                    <div
-                      key={parcel.id}
-                      className="flex items-center gap-4 p-4 rounded-lg bg-surface-low hover:bg-surface-container transition-smooth"
-                    >
-                      <div className="w-12 h-12 rounded-lg bg-[var(--tertiary)]/12 flex items-center justify-center">
+                    <div key={parcel.id} className="flex items-center gap-4 p-4 rounded-lg bg-surface-low hover:bg-surface-container transition-smooth">
+                      <div className="relative w-12 h-12 rounded-lg bg-surface-lowest flex items-center justify-center">
                         <span className="material-symbols-outlined text-on-surface">grass</span>
+                        <span className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--surface-container-lowest)]" style={{ backgroundColor: color }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-on-surface truncate">{parcel.name}</p>
-                        <p className="text-sm text-on-surface-variant capitalize">
-                          {parcel.cropType} - {parcel.area.toFixed(2)} ha
+                        <p className="text-sm text-on-surface-variant truncate">
+                          {getCropNameById(parcel.cropType)} · {parcel.area.toFixed(2)} ha
                         </p>
                       </div>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-sm ${styles.chip}`}>
-                        {parcel.soilStatus === 'optimo' ? 'Óptimo' : parcel.soilStatus === 'alerta' ? 'Alerta' : 'Crítico'}
-                      </span>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-sm ${STATUS_CHIP[estado]}`}>{STATUS_LABEL[estado]}</span>
                     </div>
                   )
                 })}
@@ -323,104 +249,55 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        {/* AI Recommendations */}
+        {/* Recomendaciones */}
         <Card className="bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <CardTitle className="text-headline text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-[var(--tertiary)]">psychology</span>
-              Recomendaciones AI
+              Recomendaciones Agronómicas
             </CardTitle>
-            <CardDescription className="text-on-surface-variant mt-1">Sugerencias inteligentes para tu cultivo</CardDescription>
+            <CardDescription className="text-on-surface-variant mt-1">Motor de reglas según umbrales del CIAT</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* No dividers - use spacing */}
             <div className="space-y-4">
-              {recommendations.map((rec, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-start gap-3 p-4 rounded-lg ${
-                    rec.priority === 'success'
-                      ? 'bg-success-container'
-                      : rec.priority === 'warning'
-                      ? 'bg-warning-container'
-                      : 'bg-surface-low'
-                  }`}
-                >
-                  <span
-                    className={`material-symbols-outlined text-lg mt-0.5 ${
-                      rec.priority === 'success'
-                        ? 'text-[var(--success)]'
-                        : rec.priority === 'warning'
-                        ? 'text-[var(--warning)]'
-                        : 'text-[var(--secondary)]'
-                    }`}
-                  >
-                    {rec.icon}
-                  </span>
-                  <p className="text-sm text-on-surface leading-relaxed">{rec.text}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Agronomist Chat Console */}
-            <div className="mt-6 pt-5 border-t border-[var(--on-primary)]/10 space-y-4">
-              <h4 className="text-sm font-semibold text-on-surface flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[var(--tertiary)] text-base">forum</span>
-                Consultar al Agrónomo IA
-              </h4>
-              <p className="text-xs text-on-surface-variant leading-normal">
-                Hazle una pregunta técnica sobre estas recomendaciones o el estado de tus lotes.
-              </p>
-              
-              <form onSubmit={handleChatSubmit} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ej: ¿Cómo corrijo el pH de la Parcela 1?"
-                  value={chatQuestion}
-                  onChange={(e) => setChatQuestion(e.target.value)}
-                  className="flex-1 bg-surface-high border-0 h-10 px-3 rounded-lg text-sm focus:ring-1 focus:ring-[var(--tertiary)] text-on-surface placeholder:text-on-surface-variant/40"
-                  disabled={isChatLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={isChatLoading || !chatQuestion.trim()}
-                  className="bg-[var(--tertiary)] hover:bg-[var(--tertiary-fixed-dim)] text-[var(--on-tertiary-fixed)] font-semibold h-10 px-4 rounded-lg text-xs flex items-center justify-center transition-smooth disabled:opacity-50 border-0 cursor-pointer"
-                >
-                  {isChatLoading ? (
-                    <span className="material-symbols-outlined text-base animate-spin">sync</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-base">send</span>
-                  )}
-                </button>
-              </form>
-
-              {chatAnswer && (
-                <div className="bg-surface-low p-4 rounded-lg text-xs leading-relaxed text-on-surface shadow-inner border border-[var(--on-primary)]/5 relative animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <span className="absolute -top-2 left-4 w-4 h-4 bg-surface-low rotate-45 border-l border-t border-[var(--on-primary)]/5" />
-                  <p className="font-semibold text-[var(--tertiary)] mb-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">psychology</span>
-                    Respuesta del Asistente CIAT:
-                  </p>
-                  <p className="text-on-surface-variant font-medium whitespace-pre-line">{chatAnswer}</p>
-                </div>
-              )}
+              {recomendaciones === null
+                ? Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)
+                : recomendaciones.length === 0
+                ? <p className="text-sm text-on-surface-variant">No hay recomendaciones disponibles por ahora.</p>
+                : recomendaciones.map((rec, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-3 p-4 rounded-lg ${
+                        rec.priority === 'success' ? 'bg-success-container' : rec.priority === 'warning' ? 'bg-warning-container' : 'bg-surface-low'
+                      }`}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-lg mt-0.5 ${
+                          rec.priority === 'success' ? 'text-[var(--success)]' : rec.priority === 'warning' ? 'text-[var(--warning)]' : 'text-[var(--primary-container)]'
+                        }`}
+                      >
+                        {rec.icon}
+                      </span>
+                      <p className="text-sm text-on-surface leading-relaxed">{rec.text}</p>
+                    </div>
+                  ))}
             </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Active Sensors Summary */}
+      {/* Resumen de sensores por variable */}
       <section>
         <Card className="bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-headline text-on-surface">Sensores Activos</CardTitle>
-                <CardDescription className="text-on-surface-variant mt-1">Monitoreo IoT en tiempo real</CardDescription>
+                <CardDescription className="text-on-surface-variant mt-1">Promedio actual por variable en todas tus parcelas</CardDescription>
               </div>
               <button
                 onClick={() => navigate('sensors')}
-                className="text-[var(--tertiary)] hover:text-[var(--tertiary-fixed-dim)] font-medium text-sm flex items-center gap-1 transition-smooth"
+                className="flex-none whitespace-nowrap text-[var(--tertiary)] hover:text-[var(--tertiary-fixed-dim)] font-medium text-sm flex items-center gap-1 transition-smooth"
               >
                 Ver detalles
                 <span className="material-symbols-outlined text-lg">arrow_forward</span>
@@ -428,31 +305,37 @@ export function DashboardView() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              {[
-                { label: 'Humedad', icon: 'water_drop', count: state.parcels.length || 4, status: 'online' },
-                { label: 'Temperatura', icon: 'thermostat', count: state.parcels.length || 4, status: 'online' },
-                { label: 'pH Suelo', icon: 'science', count: state.parcels.length || 3, status: 'online' },
-                { label: 'Nitrógeno', icon: 'eco', count: state.parcels.length || 2, status: 'warning' },
-              ].map((sensor) => (
-                <div key={sensor.label} className="flex items-center gap-3 p-4 rounded-lg bg-surface-low">
-                  <div className="relative">
-                    <div className="w-11 h-11 rounded-lg bg-[var(--tertiary)]/12 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-on-surface">{sensor.icon}</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {resumenPorTipo.map(({ tipo, cantidad, promedio, estado }) => {
+                const tema = SENSOR_THEME[tipo]
+                return (
+                  <div key={tipo} className="flex items-center gap-3 p-4 rounded-lg bg-surface-low">
+                    <div className="relative flex-none">
+                      <div className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ backgroundColor: tema.soft, color: tema.color }}>
+                        <span className="material-symbols-outlined">{tema.icon}</span>
+                      </div>
+                      {cantidad > 0 && (
+                        <span
+                          className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ring-2 ring-[var(--surface-container-low)] ${
+                            estado === 'optimo' ? 'bg-[var(--success)]' : estado === 'alerta' ? 'bg-[var(--warning)]' : 'bg-[var(--error)]'
+                          }`}
+                        />
+                      )}
                     </div>
-                    <span
-                      className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                        sensor.status === 'online' ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'
-                      } sensor-pulse`}
-                      style={{ boxShadow: '0 0 0 2px var(--surface-container-lowest)' }}
-                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-on-surface text-sm truncate">{tema.shortLabel}</p>
+                      {cargandoSensores ? (
+                        <Skeleton className="w-16 h-3 mt-1" />
+                      ) : (
+                        <p className="text-xs text-on-surface-variant">
+                          {promedio !== null ? `${promedio.toFixed(tipo === 'ph' ? 1 : 0)}${tema.unit ? ' ' + tema.unit : ''} · ` : ''}
+                          {cantidad} {cantidad === 1 ? 'activo' : 'activos'}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-on-surface text-sm">{sensor.label}</p>
-                    <p className="text-xs text-on-surface-variant">{sensor.count} activos</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

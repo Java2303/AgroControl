@@ -7,9 +7,20 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { API_URL } from '@/lib/api-config'
+import { AuthBrandPanel } from '@/components/auth/auth-brand-panel'
 
 // 💡 NOTA: Cambia 'localhost' por tu IP local (ej. 192.168.x.x) para pruebas en móvil
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = API_URL
+
+// Política de contraseñas (misma regla que el backend): cualquier símbolo cuenta como carácter especial
+const REQUISITOS_PASSWORD = [
+  { texto: '8 caracteres o más', cumple: (p: string) => p.length >= 8 && p.length <= 72 },
+  { texto: 'Una mayúscula', cumple: (p: string) => /[A-Z]/.test(p) },
+  { texto: 'Una minúscula', cumple: (p: string) => /[a-z]/.test(p) },
+  { texto: 'Un número', cumple: (p: string) => /\d/.test(p) },
+  { texto: 'Un símbolo (. # @ ! - _ …)', cumple: (p: string) => /[^A-Za-z\d\s]/.test(p) },
+]
 
 export function RegisterForm() {
   const { navigate } = useApp()
@@ -60,11 +71,10 @@ export function RegisterForm() {
       validationErrors.email = 'Formato de correo inválido'
     }
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
     if (!formData.password) {
       validationErrors.password = 'La contraseña es requerida'
-    } else if (!passwordRegex.test(formData.password)) {
-      validationErrors.password = '8+ carac., Mayús., Minús., Núm. y Símbolo'
+    } else if (!REQUISITOS_PASSWORD.every((r) => r.cumple(formData.password))) {
+      validationErrors.password = 'La contraseña no cumple todos los requisitos'
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -115,10 +125,12 @@ export function RegisterForm() {
 
   // 4. RENDERIZADO (UI/UX Agro Control)
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--primary)]">
+    <div className="surface-dark min-h-screen grid lg:grid-cols-[1.15fr_1fr] bg-[var(--primary)]">
+      <AuthBrandPanel />
+      <div className="relative flex items-center justify-center p-4 lg:p-10">
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
         <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23b2d414' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238dc63f' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }} />
       </div>
 
@@ -237,8 +249,28 @@ export function RegisterForm() {
                         className="bg-[var(--on-primary)]/5 border-0 text-[var(--on-primary)] h-11 rounded-lg pl-10 focus:ring-2 focus:ring-[var(--tertiary)]/40"
                       />
                     </div>
+                    {errors.confirmPassword && <FieldError className="text-[var(--error)] mt-1">{errors.confirmPassword}</FieldError>}
                   </Field>
                 </div>
+
+                {/* Requisitos de la contraseña, marcados en tiempo real */}
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 -mt-1">
+                  {REQUISITOS_PASSWORD.map((r) => {
+                    const ok = r.cumple(formData.password)
+                    return (
+                      <li
+                        key={r.texto}
+                        className={`flex items-center gap-1.5 text-xs transition-colors ${
+                          ok ? 'text-[var(--tertiary)]' : errors.password ? 'text-[var(--error)]' : 'text-[var(--on-primary)]/50'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-sm">{ok ? 'check_circle' : 'radio_button_unchecked'}</span>
+                        {r.texto}
+                      </li>
+                    )
+                  })}
+                </ul>
+                {errors.password && <FieldError className="text-[var(--error)] -mt-2">{errors.password}</FieldError>}
 
                 <Field>
                   <FieldLabel className="text-[var(--on-primary)]/80 text-sm font-medium">Rol Institucional</FieldLabel>
@@ -307,6 +339,7 @@ export function RegisterForm() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

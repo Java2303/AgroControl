@@ -78,7 +78,7 @@ export function SettingsView() {
                 </Field>
                 <Field>
                   <FieldLabel className="text-on-surface font-semibold">Tipo de Usuario</FieldLabel>
-                  <Input value={state.user?.userType === 'agricultor' ? 'Agricultor' : 'Técnico'} disabled className="bg-surface-high border-0 h-11 rounded-lg capitalize" />
+                  <Input value={state.user?.userType === 'productor' ? 'Productor' : 'Ingeniero Agrónomo'} disabled className="bg-surface-high border-0 h-11 rounded-lg capitalize" />
                 </Field>
               </FieldGroup>
             </div>

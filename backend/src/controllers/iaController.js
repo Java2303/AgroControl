@@ -1,82 +1,23 @@
 const db = require('../config/db');
 
 const cropNames = {
-  1: 'Soya',
+  1: 'Soya (Soja)',
   2: 'Maíz',
   3: 'Trigo',
   4: 'Arroz',
   5: 'Girasol',
   6: 'Sorgo',
-  7: 'Caña de Azúcar'
+  7: 'Caña de Azúcar',
+  8: 'Sésamo (Ajonjolí)',
+  9: 'Frejol (Frijol/Poroto)',
+  10: 'Yuca (Mandioca)',
+  11: 'Pastos y Forrajes',
+  12: 'Chía',
+  13: 'Cítricos y Frutales',
+  14: 'Hortalizas'
 };
 
-const generarRecomendacionesReglas = (readings) => {
-  const recommendations = [];
-
-  if (!readings || readings.length === 0) {
-    return [
-      { text: 'Registre parcelas en el mapa satelital para activar las recomendaciones del CIAT.', icon: 'landscape', priority: 'info' },
-      { text: 'El sistema está listo para monitorear humedad, pH y nutrientes en tiempo real.', icon: 'online_prediction', priority: 'success' }
-    ];
-  }
-
-  // 1. Analizar humedad
-  const parcelasSecas = readings.filter(r => parseFloat(r.humidity) < 40);
-  if (parcelasSecas.length > 0) {
-    recommendations.push({
-      text: `Humedad baja en ${parcelasSecas.map(p => p.parcelName).join(', ')}. Se recomienda programar riego prioritario.`,
-      icon: 'water',
-      priority: 'warning'
-    });
-  }
-
-  // 2. Analizar Nitrógeno
-  const parcelasBajoN = readings.filter(r => parseFloat(r.nitrogen) < 80);
-  if (parcelasBajoN.length > 0) {
-    recommendations.push({
-      text: `Bajo nivel de nitrógeno en ${parcelasBajoN.map(p => p.parcelName).join(', ')}. Considere fertilización nitrogenada moderada.`,
-      icon: 'science',
-      priority: 'warning'
-    });
-  }
-
-  // 3. Analizar pH
-  const parcelasAcidas = readings.filter(r => parseFloat(r.ph) < 6.0);
-  if (parcelasAcidas.length > 0) {
-    recommendations.push({
-      text: `Suelo ácido (pH < 6.0) detectado en ${parcelasAcidas.map(p => p.parcelName).join(', ')}. Considere encalado agrícola.`,
-      icon: 'info',
-      priority: 'info'
-    });
-  }
-
-  // 4. Agregar recomendación de éxito general si todo está bien
-  if (recommendations.length === 0) {
-    recommendations.push({
-      text: 'Niveles de nutrientes y humedad óptimos en todos tus cultivos. Monitoreo estable.',
-      icon: 'check_circle',
-      priority: 'success'
-    });
-  }
-
-  // Asegurar siempre 3 sugerencias para la interfaz
-  if (recommendations.length < 3) {
-    recommendations.push({
-      text: 'Rotación recomendada: Considere sembrar Sorgo o Girasol en la próxima campaña invernal para restaurar el suelo.',
-      icon: 'loop',
-      priority: 'info'
-    });
-  }
-  if (recommendations.length < 3) {
-    recommendations.push({
-      text: 'Evite el encharcamiento manteniendo limpios los canales de drenaje perimetrales.',
-      icon: 'waves',
-      priority: 'info'
-    });
-  }
-
-  return recommendations.slice(0, 3);
-};
+const { generarRecomendacionesReglas } = require('../services/motorReglas');
 
 const generarRespuestaChatFallback = (pregunta, readings) => {
   const q = (pregunta || '').toLowerCase();
@@ -198,11 +139,11 @@ Notas para iconos y prioridades:
 - Prioridades válidas: "success" (si los datos están excelentes), "warning" (si hay alguna alerta crítica de sequedad, acidez o falta severa de nitrógeno), "info" (consejos generales o preventivos).
 `;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
       const response = await fetch(geminiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           contents: [{
             parts: [{ text: prompt }]
@@ -221,6 +162,9 @@ Notas para iconos y prioridades:
       const rawText = geminiData.candidates[0].content.parts[0].text;
       
       const recomendaciones = JSON.parse(rawText);
+      if (!Array.isArray(recomendaciones)) {
+        throw new Error('Respuesta de Gemini con formato inesperado');
+      }
 
       res.status(200).json({
         status: 'success',
@@ -229,8 +173,9 @@ Notas para iconos y prioridades:
       });
 
     } catch (err) {
-      console.error('[IA] Error al llamar a Gemini:', err);
+      console.error('[IA] Error al llamar a Gemini:', err.message);
       // Fallback en caso de error en la llamada a la API
+      try {
       const result = await db.query(`
         SELECT p.nombre AS "parcelName", p.tipo_cultivo_id AS "cropTypeId", p.area_hectareas AS "area",
                ls.humedad_suelo AS humidity, ls.nitrogeno AS nitrogen, ls.ph AS ph
@@ -247,17 +192,27 @@ Notas para iconos y prioridades:
         source: 'reglas_locales_fallback',
         data: generarRecomendacionesReglas(result.rows)
       });
+      } catch (fallbackErr) {
+        console.error('[IA] Error en el fallback de reglas:', fallbackErr);
+        res.status(500).json({ status: 'error', message: 'Error al generar las recomendaciones.' });
+      }
     }
   },
 
   preguntarAsistente: async (req, res) => {
-    try {
-      const { pregunta, recomendaciones } = req.body;
-      const usuario_id = req.usuario.id;
+    const { pregunta, recomendaciones } = req.body || {};
+    let readings = [];
 
-      if (!pregunta) {
-        return res.status(400).json({ status: 'error', message: 'La pregunta es requerida.' });
-      }
+    if (typeof pregunta !== 'string' || !pregunta.trim()) {
+      return res.status(400).json({ status: 'error', message: 'La pregunta es requerida.' });
+    }
+
+    if (pregunta.length > 500) {
+      return res.status(400).json({ status: 'error', message: 'La pregunta no puede superar los 500 caracteres.' });
+    }
+
+    try {
+      const usuario_id = req.usuario.id;
 
       // 1. Obtener datos de parcelas para darle contexto a la IA
       const query = `
@@ -281,14 +236,18 @@ Notas para iconos y prioridades:
         WHERE p.usuario_id = $1;
       `;
       const result = await db.query(query, [usuario_id]);
-      const readings = result.rows;
+      readings = result.rows;
 
       const datosAgricolas = readings.map(r => {
         const cultivo = cropNames[r.cropTypeId] || 'Otros';
         return `- Parcela: "${r.parcelName}", Cultivo: ${cultivo}, Humedad: ${r.humidity}%, pH: ${r.ph}, Nitrógeno: ${r.nitrogen} ppm.`;
       }).join('\n');
 
-      const recomendadosStr = (recomendaciones || []).map(r => `- ${r.text}`).join('\n');
+      const recomendadosStr = (Array.isArray(recomendaciones) ? recomendaciones : [])
+        .slice(0, 5)
+        .filter(r => r && typeof r.text === 'string')
+        .map(r => `- ${r.text.slice(0, 300)}`)
+        .join('\n');
 
       const apiKey = process.env.GEMINI_API_KEY;
 
@@ -313,11 +272,11 @@ Responde a su consulta de manera concisa, clara, directa y muy práctica en espa
 Limita tu respuesta a un máximo de 100 palabras. No incluyas saludos largos, firmas ni bloques de código complementarios, ve directo al consejo técnico.
 `;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
       const response = await fetch(geminiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
           contents: [{
             parts: [{ text: prompt }]
@@ -338,7 +297,7 @@ Limita tu respuesta a un máximo de 100 palabras. No incluyas saludos largos, fi
       });
 
     } catch (error) {
-      console.error('[IA Chat] Error al conectar con Gemini, usando fallback de reglas:', error);
+      console.error('[IA Chat] Error al conectar con Gemini, usando fallback de reglas:', error.message);
       
       const fallbackRespuesta = generarRespuestaChatFallback(pregunta, readings);
       

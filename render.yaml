@@ -1,0 +1,33 @@
+# Blueprint de Render para la API de Agro Control.
+# Render lo detecta al crear un "Blueprint" desde el repositorio de GitHub.
+# Los valores marcados con sync: false se piden en el panel de Render (no se guardan en git).
+services:
+  - type: web
+    name: agro-control-api
+    runtime: node
+    plan: free
+    # Misma zona que la base de Neon (AWS us-east-1) para minimizar la latencia
+    region: virginia
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /test-db
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      # Cadena de conexión de Neon (Connection string, con ?sslmode=require)
+      - key: DATABASE_URL
+        sync: false
+      # Secreto aleatorio para firmar los JWT (Render lo genera)
+      - key: JWT_SECRET
+        generateValue: true
+      # URL de la web en Vercel + origen de la app Android, separados por coma
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SIMULAR_SENSORES
+        value: "true"
+      # Opcional: clave de Gemini para el chat de IA (sin ella usa el motor de reglas local)
+      - key: GEMINI_API_KEY
+        sync: false
