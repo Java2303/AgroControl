@@ -6,8 +6,8 @@ services:
     name: agro-control-api
     runtime: node
     plan: free
-    # Misma zona que la base de Neon (AWS us-east-1) para minimizar la latencia
-    region: virginia
+    # Misma zona que la base de Neon (AWS us-east-2, Ohio) para minimizar la latencia
+    region: ohio
     rootDir: backend
     buildCommand: npm ci --omit=dev
     startCommand: npm start

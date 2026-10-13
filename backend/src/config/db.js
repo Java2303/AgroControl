@@ -3,10 +3,13 @@ const path = require('path');
 // Forzamos la carga del .env especificando la ruta exacta
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-// En la nube (Neon) se usa DATABASE_URL, que ya incluye sslmode=require.
+// En la nube (Neon) se usa DATABASE_URL. Se fuerza sslmode=verify-full para verificar
+// siempre el certificado del servidor (pg v9 dejará de hacerlo con sslmode=require).
 // En local se usan las variables DB_* del archivo .env.
-const pool = process.env.DATABASE_URL
-    ? new Pool({ connectionString: process.env.DATABASE_URL, max: 5 })
+const databaseUrl = process.env.DATABASE_URL?.replace(/sslmode=(prefer|require|verify-ca)/, 'sslmode=verify-full');
+
+const pool = databaseUrl
+    ? new Pool({ connectionString: databaseUrl, max: 5 })
     : new Pool({
         user: process.env.DB_USER,
         host: process.env.DB_HOST,

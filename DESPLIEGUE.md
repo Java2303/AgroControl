@@ -6,7 +6,7 @@ Arquitectura en producción (plan gratuito):
 |---|---|---|
 | Interfaz web (Next.js) | Vercel | `https://agro-control.vercel.app` |
 | API REST (Express) | Render | `https://agro-control-api.onrender.com/api` |
-| Base de datos (PostgreSQL + PostGIS) | Neon, región AWS us-east-1 | — |
+| Base de datos (PostgreSQL + PostGIS) | Neon, región AWS us-east-2 (Ohio) | — |
 | App Android (Capacitor) | APK generado en local | consume la API de Render |
 
 Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin cifrar.
@@ -18,7 +18,7 @@ Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin c
 ## 1. Base de datos en Neon
 
 1. Entra a <https://neon.tech> y crea una cuenta con GitHub.
-2. Crea un proyecto llamado `agro-control`, con PostgreSQL 17 y región **AWS US East 1 (N. Virginia)**.
+2. Crea un proyecto llamado `agro-control`, con PostgreSQL 17 o superior y región **AWS US East 2 (Ohio)**.
 3. En **Connection Details**, copia la *connection string*. Tiene esta forma:
    `postgresql://usuario:clave@ep-xxxx-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require`
 4. Crea las tablas y el catálogo desde tu PC (PowerShell, en la carpeta `backend`):
