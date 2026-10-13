@@ -15,7 +15,10 @@ const limitarIntentos = ({ ventanaMs = 15 * 60 * 1000, maximo = 10 } = {}) => {
     limpieza.unref();
 
     return (req, res, next) => {
-        const ip = req.ip || req.socket.remoteAddress;
+        // En Render el tráfico llega a través de Cloudflare: req.ip sería la IP del nodo de
+        // Cloudflare, que cambia en cada petición. CF-Connecting-IP trae la IP real del cliente
+        // (Cloudflare la sobrescribe, así que no la puede falsificar quien envía la solicitud).
+        const ip = req.get('cf-connecting-ip') || req.ip || req.socket.remoteAddress;
         const ahora = Date.now();
         let registro = intentos.get(ip);
 
