@@ -28,6 +28,3 @@ services:
         sync: false
       - key: SIMULAR_SENSORES
         value: "true"
-      # Opcional: clave de Gemini para el chat de IA (sin ella usa el motor de reglas local)
-      - key: GEMINI_API_KEY
-        sync: false

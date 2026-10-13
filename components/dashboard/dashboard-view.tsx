@@ -253,7 +253,7 @@ export function DashboardView() {
         <Card className="bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <CardTitle className="text-headline text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-[var(--tertiary)]">psychology</span>
+              <span className="material-symbols-outlined text-[var(--tertiary)]">fact_check</span>
               Recomendaciones Agronómicas
             </CardTitle>
             <CardDescription className="text-on-surface-variant mt-1">Motor de reglas según umbrales del CIAT</CardDescription>

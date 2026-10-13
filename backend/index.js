@@ -9,7 +9,6 @@ const authRoutes = require('./src/routes/authRoutes');
 const parcelasRoutes = require('./src/routes/parcelasRoutes');
 const cultivosRoutes = require('./src/routes/cultivosRoutes');
 const sensoresRoutes = require('./src/routes/sensoresRoutes');
-const iaRoutes = require('./src/routes/iaRoutes');
 const reglasRoutes = require('./src/routes/reglasRoutes');
 const { startSimulator } = require('./src/services/sensorSimulator');
 // Sin un secreto robusto cualquiera podria firmar tokens validos
@@ -47,7 +46,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/parcelas', parcelasRoutes);
 app.use('/api', cultivosRoutes);
 app.use('/api', sensoresRoutes);
-app.use('/api', iaRoutes);
 app.use('/api', reglasRoutes);
 
 // --- Ruta de Prueba de Conexión (también la usa Render como health check) ---

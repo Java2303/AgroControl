@@ -198,13 +198,13 @@ export function SettingsView() {
             </div>
           </div>
           <p className="text-sm text-on-surface-variant leading-relaxed">
-            Plataforma de gestión agrícola inteligente. Monitorea tus cultivos con tecnología IoT,
-            gestiona parcelas y recibe recomendaciones basadas en inteligencia artificial para
-            optimizar tu producción agrícola.
+            Sistema de gestión y trazabilidad de suelos del CIAT. Monitorea tus parcelas con sensores IoT,
+            conserva el historial químico de cada lote y recibe recomendaciones de un motor de reglas
+            basado en los umbrales agronómicos del CIAT.
           </p>
           <div className="mt-5 pt-5 border-t border-[var(--outline-variant)]">
             <p className="text-xs text-on-surface-variant">
-              © 2024 AGRO CONTROL. Todos los derechos reservados.
+              © 2026 AGRO CONTROL · Centro de Investigación Agrícola Tropical
             </p>
           </div>
         </CardContent>

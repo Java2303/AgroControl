@@ -37,7 +37,6 @@ Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin c
 3. Completa las variables que pide:
    - `DATABASE_URL`: la connection string de Neon.
    - `CORS_ORIGINS`: por ahora `https://localhost`. La completarás en el paso 4.
-   - `GEMINI_API_KEY`: opcional; déjala vacía para usar el motor de reglas local.
    - `JWT_SECRET` lo genera Render automáticamente.
 4. Pulsa **Apply**. Cuando termine, abre `https://<tu-servicio>.onrender.com/test-db`. Debe responder `"status":"success"`.
 
@@ -96,5 +95,4 @@ Cuando tengas un dominio, agrégalo en Vercel (**Settings → Domains**) para la
 | `JWT_SECRET` | Render | Secreto para firmar sesiones (mínimo 32 caracteres; la API no arranca sin él) |
 | `CORS_ORIGINS` | Render | Orígenes permitidos, separados por coma |
 | `SIMULAR_SENSORES` | Render | `true` mientras no haya nodos ESP32 reales |
-| `GEMINI_API_KEY` | Render | Opcional, para el chat de IA |
 | `NEXT_PUBLIC_API_URL` | Vercel y build móvil | URL pública de la API, terminada en `/api` |
