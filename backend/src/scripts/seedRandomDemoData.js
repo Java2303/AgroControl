@@ -82,6 +82,46 @@ const sampleParcels = [
   }
 ];
 
+// --- Bitácora de labores de ejemplo: una campaña por parcela, con fechas relativas a hoy ---
+const SEMILLA = { 1: 'Semilla certificada de soya', 2: 'Semilla híbrida de maíz', 3: 'Semilla certificada de trigo', 5: 'Semilla híbrida de girasol', 6: 'Semilla de sorgo granífero', 7: 'Esquejes de caña de azúcar' };
+const DENSIDAD = { 1: [70, 'kg/ha'], 2: [22, 'kg/ha'], 3: [110, 'kg/ha'], 5: [5, 'kg/ha'], 6: [12, 'kg/ha'], 7: [12, 't/ha'] };
+const RENDIMIENTO = { 1: [3.1, 't/ha'], 2: [6.4, 't/ha'], 3: [2.2, 't/ha'], 5: [1.9, 't/ha'], 6: [4.3, 't/ha'], 7: [78, 't/ha'] };
+
+const haceDias = (n) => new Date(Date.now() - 4 * 3600e3 - n * 86400e3).toISOString().slice(0, 10);
+
+function registradorPara(usuario, agronomoDemo) {
+  return ['agronomo', 'admin_ciat'].includes(usuario.rol) ? usuario.usuario_id : (agronomoDemo || usuario.usuario_id);
+}
+
+async function sembrarBitacora(parcelaId, registradorId, p, indice) {
+  const ya = await pool.query('SELECT 1 FROM actividades_parcela WHERE parcela_id = $1 LIMIT 1', [parcelaId]);
+  if (ya.rowCount > 0) return;
+
+  const cultivo = p.tipo_cultivo_id;
+  // Parcelas pares: campaña ya cosechada; impares: cultivo en pie
+  const cosechada = indice % 2 === 0;
+  const siembra = cosechada ? 150 + indice * 3 : 55 + indice * 4;
+  const labores = [
+    ['muestreo', siembra + 20, null, null, null, 'Muestra compuesta 0–20 cm enviada al laboratorio de suelos.'],
+    ...(indice === 1 ? [['encalado', siembra + 12, 'Cal agrícola dolomítica', 1.5, 't/ha', 'Corrección de acidez según el análisis de suelo.']] : []),
+    ['siembra', siembra, SEMILLA[cultivo], DENSIDAD[cultivo][0], DENSIDAD[cultivo][1], 'Siembra directa sobre rastrojo.'],
+    ['fertilizacion', siembra, 'Fosfato diamónico 18-46-0', 100, 'kg/ha', 'Fertilización de base en la línea de siembra.'],
+    ['fertilizacion', siembra - 35, 'Urea 46 %', 80, 'kg/ha', 'Fertilización nitrogenada de cobertura.'],
+    ['fitosanitario', siembra - 50, 'Insecticida (control de orugas)', 0.25, 'L/ha', 'Aplicación por monitoreo de plagas sobre el umbral.'],
+    ['riego', siembra - 42, null, 25, 'mm', 'Riego suplementario por déficit hídrico.'],
+    ...(cosechada ? [['cosecha', siembra - 120, null, RENDIMIENTO[cultivo][0], RENDIMIENTO[cultivo][1], 'Cosecha mecanizada.']] : []),
+  ].filter(([, dias]) => dias >= 0);
+
+  for (const [tipo, dias, producto, cantidad, unidad, descripcion] of labores) {
+    await pool.query(
+      `INSERT INTO actividades_parcela (parcela_id, usuario_id, tipo, fecha, producto, cantidad, unidad, descripcion)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [parcelaId, registradorId, tipo, haceDias(dias), producto, cantidad, unidad, descripcion]
+    );
+  }
+  console.log(`  [+] Bitácora: ${labores.length} labores para "${p.nombre}"`);
+}
+
 async function seedRandomData() {
   try {
     console.log('--- Iniciando carga de datos de ejemplo agrícolas para Santa Cruz / CIAT ---');
@@ -90,8 +130,12 @@ async function seedRandomData() {
     //    Uso: node src/scripts/seedRandomDemoData.js [correo1 correo2 ...]
     const correos = process.argv.slice(2).map(c => c.toLowerCase());
     const userRes = correos.length > 0
-      ? await pool.query('SELECT usuario_id, email, nombre_completo FROM usuarios WHERE LOWER(email) = ANY($1);', [correos])
-      : await pool.query('SELECT usuario_id, email, nombre_completo FROM usuarios;');
+      ? await pool.query('SELECT usuario_id, email, nombre_completo, rol FROM usuarios WHERE LOWER(email) = ANY($1);', [correos])
+      : await pool.query('SELECT usuario_id, email, nombre_completo, rol FROM usuarios;');
+    // Las labores las registra un agrónomo (Cuadro 3.36); se usa para las parcelas de productores
+    const agronomoDemo = (await pool.query(
+      "SELECT usuario_id FROM usuarios WHERE rol IN ('agronomo', 'admin_ciat') ORDER BY (email = 'agronomo@agrocontrol.bo') DESC, fecha_registro LIMIT 1"
+    )).rows[0]?.usuario_id;
     if (userRes.rows.length === 0) {
       console.log('No se encontraron usuarios en la BD.');
       process.exit(1);
@@ -163,6 +207,8 @@ async function seedRandomData() {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
           `, [loteId, nitrogeno, fosforo, potasio, ph, humedad, temperatura, ec, timestamp]);
         }
+
+        await sembrarBitacora(parcelaId, registradorPara(user, agronomoDemo), p, sampleParcels.indexOf(p));
       }
     }
 

@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ParcelShape } from '@/components/parcels/parcel-shape'
+import { ParcelHistory } from '@/components/parcels/parcel-history'
 import { CULTIVOS_CIAT_SANTA_CRUZ, getCropColor, getCropNameById } from '@/lib/crops'
 import { apiFetch } from '@/lib/api-client'
 import { useParcels } from '@/lib/hooks/use-parcels'
@@ -33,7 +34,7 @@ import { useSensors } from '@/lib/hooks/use-sensors'
 import { STATUS_CHIP, STATUS_LABEL, estadosPorParcela } from '@/lib/sensor-theme'
 
 export function ParcelsView() {
-  const { navigate, focusParcelOnMap } = useApp()
+  const { state, navigate, focusParcelOnMap } = useApp()
   const { parcels, setParcels, loading, error } = useParcels()
   const { readings } = useSensors()
 
@@ -45,6 +46,9 @@ export function ParcelsView() {
   const [parcelToDelete, setParcelToDelete] = useState<string | null>(null)
   const [editData, setEditData] = useState({ name: '', cropType: '' })
   const [accionError, setAccionError] = useState<string | null>(null)
+  const [parcelaBitacora, setParcelaBitacora] = useState<Parcel | null>(null)
+  // Matriz de permisos (Cuadro 3.36): el productor consulta la bitácora, no registra labores
+  const puedeRegistrarLabores = state.user?.userType !== 'productor'
 
   // El estado del suelo se deriva de las lecturas actuales de cada parcela
   const estados = useMemo(() => estadosPorParcela(readings), [readings])
@@ -224,16 +228,24 @@ export function ParcelsView() {
                     </div>
                   </div>
 
-                  {/* Siempre visibles en pantallas táctiles; en escritorio aparecen al pasar el cursor */}
-                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-smooth">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => setParcelaBitacora(parcel)}
+                      className="flex-1 bg-[var(--tertiary-container)] text-[var(--tertiary)] hover:bg-[var(--tertiary)] hover:text-[var(--on-tertiary-fixed)] border-0 font-semibold"
+                    >
+                      <span className="material-symbols-outlined text-base mr-1">history</span>
+                      Bitácora
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => focusParcelOnMap(parcel.id)}
-                      className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
+                      className="bg-surface-high border-0 hover:bg-surface-container"
+                      aria-label="Ver en el mapa"
+                      title="Ver en el mapa"
                     >
-                      <span className="material-symbols-outlined text-base mr-1">map</span>
-                      Ver en Mapa
+                      <span className="material-symbols-outlined text-base">map</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -288,6 +300,12 @@ export function ParcelsView() {
           </CardContent>
         </Card>
       )}
+
+      <ParcelHistory
+        parcel={parcelaBitacora}
+        onOpenChange={(abierto) => { if (!abierto) setParcelaBitacora(null) }}
+        puedeRegistrar={puedeRegistrarLabores}
+      />
 
       {/* Editar */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

@@ -10,6 +10,7 @@ const parcelasRoutes = require('./src/routes/parcelasRoutes');
 const cultivosRoutes = require('./src/routes/cultivosRoutes');
 const sensoresRoutes = require('./src/routes/sensoresRoutes');
 const reglasRoutes = require('./src/routes/reglasRoutes');
+const actividadesRoutes = require('./src/routes/actividadesRoutes');
 const { startSimulator } = require('./src/services/sensorSimulator');
 // Sin un secreto robusto cualquiera podria firmar tokens validos
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -47,6 +48,7 @@ app.use('/api/parcelas', parcelasRoutes);
 app.use('/api', cultivosRoutes);
 app.use('/api', sensoresRoutes);
 app.use('/api', reglasRoutes);
+app.use('/api', actividadesRoutes);
 
 // --- Ruta de Prueba de Conexión (también la usa Render como health check) ---
 app.get('/test-db', async (req, res) => {

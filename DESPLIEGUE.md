@@ -28,7 +28,9 @@ Todo el tráfico va por HTTPS, así que la app Android ya no necesita HTTP sin c
    npm run db:init
    ```
 
-   Debe responder `Esquema creado…` y `Catálogo sincronizado: 14 cultivos del CIAT.` Puedes ejecutarlo de nuevo sin riesgo.
+   Debe responder `Esquema creado…`, `Migración aplicada: …` y `Catálogo sincronizado: 14 cultivos del CIAT.` Puedes ejecutarlo de nuevo sin riesgo.
+
+   Los cambios posteriores de la base de datos se agregan como archivos `.sql` idempotentes en `backend/db/migraciones/` (por ejemplo, `001_actividades_parcela.sql`, la bitácora de labores). Para aplicarlos a una base existente, vuelve a ejecutar `npm run db:init`.
 
 ## 2. API en Render
 

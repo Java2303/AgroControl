@@ -1,7 +1,8 @@
 /**
- * Inicializa una base de datos vacía (p. ej. Neon) con el esquema de Agro Control
- * y el catálogo de cultivos del CIAT. Es seguro ejecutarlo más de una vez:
- * si las tablas ya existen, solo sincroniza el catálogo.
+ * Inicializa una base de datos vacía (p. ej. Neon) con el esquema de Agro Control,
+ * aplica las migraciones de db/migraciones (en orden alfabético) y sincroniza el
+ * catálogo de cultivos del CIAT. Es seguro ejecutarlo más de una vez: el esquema solo
+ * se crea si no existe y las migraciones son idempotentes.
  *
  * Uso (desde backend/): npm run db:init
  */
@@ -25,6 +26,15 @@ async function initDb() {
 
         // El volcado de pg_dump vacía el search_path de la sesión; se restablece para las consultas siguientes
         await client.query('SET search_path TO public');
+
+        const dirMigraciones = path.resolve(__dirname, '../../db/migraciones');
+        const migraciones = fs.existsSync(dirMigraciones)
+            ? fs.readdirSync(dirMigraciones).filter((f) => f.endsWith('.sql')).sort()
+            : [];
+        for (const archivo of migraciones) {
+            await client.query(fs.readFileSync(path.join(dirMigraciones, archivo), 'utf8'));
+            console.log(`Migración aplicada: ${archivo}`);
+        }
 
         for (const crop of ciatCrops) {
             await client.query(
