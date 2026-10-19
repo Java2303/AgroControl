@@ -61,7 +61,7 @@ const sensoresController = {
           ORDER BY fecha_captura DESC 
           LIMIT 1
         ) ls ON true
-        WHERE p.usuario_id = $1
+        WHERE p.usuario_id = $1 AND p.activa
         ORDER BY p.nombre ASC;
       `;
 
@@ -83,7 +83,7 @@ const sensoresController = {
           FROM lecturas_suelo
         ) ls ON l.lote_id = ls.lote_id AND ls.rn <= 10
         JOIN parcelas p ON l.parcela_id = p.parcela_id
-        WHERE p.usuario_id = $1
+        WHERE p.usuario_id = $1 AND p.activa
         ORDER BY ls.fecha_captura ASC;
       `;
 

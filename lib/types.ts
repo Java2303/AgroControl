@@ -4,7 +4,7 @@ export interface User {
   email: string
   ci_nit: string
   phone?: string
-  userType: 'agronomo' | 'productor'
+  userType: 'agronomo' | 'productor' | 'admin_ciat'
   token: string
 }
 
@@ -67,7 +67,14 @@ export interface MapPoint {
   lng: number
 }
 
-export type ViewType = 'login' | 'register' | 'dashboard' | 'map' | 'parcels' | 'sensors' | 'settings'
+export type ViewType = 'login' | 'register' | 'dashboard' | 'map' | 'parcels' | 'sensors' | 'history' | 'settings'
+
+/** Nombre visible de cada rol */
+export const ROL_LABEL: Record<User['userType'], string> = {
+  agronomo: 'Ingeniero Agrónomo',
+  productor: 'Productor',
+  admin_ciat: 'Administrador CIAT',
+}
 
 export interface AppState {
   currentView: ViewType

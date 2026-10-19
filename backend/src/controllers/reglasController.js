@@ -24,7 +24,7 @@ const obtenerRecomendaciones = async (req, res) => {
         ORDER BY fecha_captura DESC
         LIMIT 1
       ) ls ON true
-      WHERE p.usuario_id = $1;
+      WHERE p.usuario_id = $1 AND p.activa;
     `;
 
     const result = await db.query(query, [usuario_id]);

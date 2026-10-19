@@ -15,16 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { MOTIVOS_BAJA, type MotivoBaja } from '@/lib/actividades'
 import { ParcelShape } from '@/components/parcels/parcel-shape'
 import { ParcelHistory } from '@/components/parcels/parcel-history'
 import { CULTIVOS_CIAT_SANTA_CRUZ, getCropColor, getCropNameById } from '@/lib/crops'
@@ -42,8 +34,8 @@ export function ParcelsView() {
   const [filterCrop, setFilterCrop] = useState<string>('all')
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [parcelToDelete, setParcelToDelete] = useState<string | null>(null)
+  const [parcelaBaja, setParcelaBaja] = useState<Parcel | null>(null)
+  const [baja, setBaja] = useState<{ motivo: MotivoBaja | ''; observacion: string; guardando: boolean; error: string | null }>({ motivo: '', observacion: '', guardando: false, error: null })
   const [editData, setEditData] = useState({ name: '', cropType: '' })
   const [accionError, setAccionError] = useState<string | null>(null)
   const [parcelaBitacora, setParcelaBitacora] = useState<Parcel | null>(null)
@@ -86,16 +78,24 @@ export function ParcelsView() {
     }
   }
 
-  const handleDeleteConfirm = async () => {
-    if (!parcelToDelete) return
+  const abrirBaja = (parcel: Parcel) => {
+    setBaja({ motivo: '', observacion: '', guardando: false, error: null })
+    setParcelaBaja(parcel)
+  }
+
+  // Baja lógica: la parcela sale de las vistas operativas, pero su historial se conserva
+  const confirmarBaja = async () => {
+    if (!parcelaBaja || !baja.motivo) return
+    setBaja((b) => ({ ...b, guardando: true, error: null }))
     try {
-      await apiFetch(`/parcelas/${parcelToDelete}`, { method: 'DELETE' })
-      setParcels(parcels.filter((p) => p.id !== parcelToDelete))
+      await apiFetch(`/parcelas/${parcelaBaja.id}/baja`, {
+        method: 'PATCH',
+        body: JSON.stringify({ motivo: baja.motivo, observacion: baja.observacion || null }),
+      })
+      setParcels(parcels.filter((p) => p.id !== parcelaBaja.id))
+      setParcelaBaja(null)
     } catch (err) {
-      setAccionError(err instanceof Error ? err.message : 'No se pudo eliminar la parcela.')
-    } finally {
-      setParcelToDelete(null)
-      setShowDeleteDialog(false)
+      setBaja((b) => ({ ...b, guardando: false, error: err instanceof Error ? err.message : 'No se pudo dar de baja la parcela.' }))
     }
   }
 
@@ -259,14 +259,12 @@ export function ParcelsView() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setParcelToDelete(parcel.id)
-                        setShowDeleteDialog(true)
-                      }}
+                      onClick={() => abrirBaja(parcel)}
                       className="bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)]"
-                      aria-label="Eliminar parcela"
+                      aria-label="Dar de baja la parcela"
+                      title="Dar de baja"
                     >
-                      <span className="material-symbols-outlined text-base">delete</span>
+                      <span className="material-symbols-outlined text-base">block</span>
                     </Button>
                   </div>
                 </CardContent>
@@ -357,23 +355,57 @@ export function ParcelsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Eliminar */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="border-0 shadow-elevated">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-headline text-on-surface">¿Eliminar parcela?</AlertDialogTitle>
-            <AlertDialogDescription className="text-on-surface-variant">
-              Esta acción no se puede deshacer. La parcela y todos sus datos serán eliminados permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-surface-high border-0">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-[var(--error)] hover:bg-[var(--error)]/90 border-0">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Dar de baja */}
+      <Dialog open={!!parcelaBaja} onOpenChange={(abierto) => { if (!abierto) setParcelaBaja(null) }}>
+        <DialogContent className="sm:max-w-md border-0 shadow-elevated">
+          <DialogHeader>
+            <DialogTitle className="text-headline text-on-surface">Dar de baja la parcela</DialogTitle>
+            <DialogDescription className="text-on-surface-variant">
+              «{parcelaBaja?.name}» dejará de aparecer en el mapa, el tablero y el monitoreo. No se elimina: su bitácora y lecturas
+              se conservan en la vista Historial.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-on-surface">Motivo</label>
+              <Select value={baja.motivo || undefined} onValueChange={(v) => setBaja({ ...baja, motivo: v as MotivoBaja })}>
+                <SelectTrigger className="bg-surface-high border-0 h-11 rounded-lg w-full">
+                  <SelectValue placeholder="Seleccione el motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(MOTIVOS_BAJA) as [MotivoBaja, string][]).map(([valor, texto]) => (
+                    <SelectItem key={valor} value={valor}>{texto}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-on-surface">
+                Observación {baja.motivo === 'otro' ? '' : <span className="font-normal text-on-surface-variant">(opcional)</span>}
+              </label>
+              <Textarea
+                rows={3}
+                maxLength={500}
+                value={baja.observacion}
+                onChange={(e) => setBaja({ ...baja, observacion: e.target.value })}
+                className="bg-surface-high border-0"
+                placeholder="Ej.: El propietario cerró el terreno al finalizar la campaña de invierno."
+              />
+            </div>
+            {baja.error && <p className="text-sm text-[var(--error)]">{baja.error}</p>}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setParcelaBaja(null)} className="bg-surface-high border-0">Cancelar</Button>
+            <Button
+              onClick={confirmarBaja}
+              disabled={!baja.motivo || baja.guardando || (baja.motivo === 'otro' && baja.observacion.trim().length < 5)}
+              className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white border-0"
+            >
+              {baja.guardando ? 'Dando de baja…' : 'Dar de baja'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

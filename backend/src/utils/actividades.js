@@ -70,7 +70,27 @@ function hoyEnBolivia(ahora = new Date()) {
 }
 
 /** Eventos que el sistema registra solo (no se crean ni se anulan desde la API de labores). */
-const EVENTOS_SISTEMA = ['registro_parcela', 'edicion_parcela'];
+const EVENTOS_SISTEMA = ['registro_parcela', 'edicion_parcela', 'baja_parcela'];
+
+/** Motivos de baja de una parcela (restricción parcela_motivo_baja_valido de la base de datos). */
+const MOTIVOS_BAJA = {
+    terreno_cerrado: 'Terreno cerrado',
+    fin_campania: 'Fin del ensayo o campaña',
+    venta_cesion: 'Venta o cesión del terreno',
+    error_registro: 'Registro erróneo o duplicado',
+    otro: 'Otro motivo',
+};
+
+/** Valida la solicitud de baja: motivo del catálogo y observación (obligatoria si el motivo es «otro»). */
+function validarBaja(entrada) {
+    const e = entrada || {};
+    const errores = [];
+    if (!Object.prototype.hasOwnProperty.call(MOTIVOS_BAJA, e.motivo)) errores.push('Seleccione un motivo de baja válido.');
+    const observacion = typeof e.observacion === 'string' ? e.observacion.trim() : '';
+    if (observacion.length > 500) errores.push('La observación admite como máximo 500 caracteres.');
+    if (e.motivo === 'otro' && observacion.length < 5) errores.push('Describa el motivo de la baja.');
+    return { errores, datos: { motivo: e.motivo, observacion: observacion || null } };
+}
 
 const CAMPOS_EDITABLES = {
     nombre: 'Nombre',
@@ -87,4 +107,4 @@ function cambiosParcela(antes, despues) {
         .map((campo) => ({ campo, etiqueta: CAMPOS_EDITABLES[campo], antes: antes[campo] ?? null, despues: despues[campo] ?? null }));
 }
 
-module.exports = { TIPOS_ACTIVIDAD, UNIDADES, EVENTOS_SISTEMA, validarActividad, hoyEnBolivia, cambiosParcela };
+module.exports = { TIPOS_ACTIVIDAD, UNIDADES, EVENTOS_SISTEMA, MOTIVOS_BAJA, validarActividad, validarBaja, hoyEnBolivia, cambiosParcela };

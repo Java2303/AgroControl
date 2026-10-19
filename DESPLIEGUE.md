@@ -69,6 +69,18 @@ https://agro-control-theta.vercel.app,https://localhost
    npm run db:seed-demo -- correo-agronomo@dominio correo-productor@dominio
    ```
 
+### Administrador del CIAT
+
+El registro público no permite el rol de administrador. Se crea desde el servidor (PowerShell, en `backend`):
+
+```powershell
+$env:DATABASE_URL = "connection-string-de-neon"
+$env:ADMIN_PASSWORD = "Una.Clave.Segura1"
+npm run admin:crear -- correo@ciat.bo "Nombre Completo" CI-123
+```
+
+Si el correo ya existe, solo se le asigna el rol. El administrador ve en **Historial** las parcelas de toda la institución, activas y dadas de baja, con su bitácora.
+
 ## 6. App Android (APK)
 
 En la raíz del proyecto:

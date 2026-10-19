@@ -10,6 +10,7 @@ const gestionParcelas = permitirRoles('admin_ciat', 'agronomo');
 router.post('/', authMiddlware, gestionParcelas, parcelasController.crearParcela);
 router.get('/', authMiddlware, parcelasController.obtenerParcelas);
 router.put('/:id', authMiddlware, gestionParcelas, parcelasController.actualizarParcela);
-router.delete('/:id', authMiddlware, gestionParcelas, parcelasController.eliminarParcela);
+// Baja lógica: las parcelas no se eliminan, se dan de baja conservando su historial
+router.patch('/:id/baja', authMiddlware, gestionParcelas, parcelasController.darDeBajaParcela);
 
 module.exports = router;

@@ -1,20 +1,23 @@
 'use client'
 
 import { useApp } from '@/lib/app-context'
-import type { ViewType } from '@/lib/types'
+import { ROL_LABEL, type ViewType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
   id: ViewType
   label: string
   icon: string
+  /** Etiqueta corta para la barra inferior del celular */
+  shortLabel?: string
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', shortLabel: 'Inicio' },
   { id: 'map', label: 'Mapa', icon: 'map' },
   { id: 'parcels', label: 'Parcelas', icon: 'grid_view' },
   { id: 'sensors', label: 'Sensores', icon: 'sensors' },
+  { id: 'history', label: 'Historial', icon: 'history' },
   { id: 'settings', label: 'Ajustes', icon: 'settings' },
 ]
 
@@ -46,7 +49,7 @@ export function Navigation() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{state.user?.name || 'Usuario'}</p>
-              <p className="text-[var(--tertiary)]/70 text-xs font-medium">{state.user?.userType === 'productor' ? 'Productor' : 'Ingeniero Agrónomo'}</p>
+              <p className="text-[var(--tertiary)]/70 text-xs font-medium">{ROL_LABEL[state.user?.userType ?? 'agronomo'] ?? 'Ingeniero Agrónomo'}</p>
             </div>
           </div>
         </div>
@@ -86,28 +89,29 @@ export function Navigation() {
 
       {/* Mobile Bottom Navigation - glassmorphism */}
       <nav className="surface-dark md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
-        <div className="flex justify-around py-2">
-          {navItems.slice(0, 4).map((item) => (
+        {/* 6 botones en 360–390 px: cada uno ocupa una fracción igual del ancho */}
+        <div className="flex py-1.5 px-1">
+          {navItems.filter((item) => item.id !== 'settings').map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}
               className={cn(
-                'flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-smooth',
+                'flex-1 min-w-0 flex flex-col items-center gap-0.5 px-0.5 py-2 rounded-xl transition-smooth',
                 state.currentView === item.id
                   ? 'text-[var(--tertiary)]'
                   : 'text-[var(--on-primary)]/50'
               )}
             >
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-[11px] font-medium truncate max-w-full">{item.shortLabel ?? item.label}</span>
             </button>
           ))}
           <button
             onClick={logout}
-            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[var(--on-primary)]/50 hover:text-[var(--error)] transition-smooth"
+            className="flex-1 min-w-0 flex flex-col items-center gap-0.5 px-0.5 py-2 rounded-xl text-[var(--on-primary)]/50 hover:text-[var(--error)] transition-smooth"
           >
             <span className="material-symbols-outlined text-xl">logout</span>
-            <span className="text-xs font-medium">Salir</span>
+            <span className="text-[11px] font-medium">Salir</span>
           </button>
         </div>
       </nav>

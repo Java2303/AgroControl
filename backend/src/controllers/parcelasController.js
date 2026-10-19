@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const { validarLimiteHectareas } = require('../utils/validators');
-const { hoyEnBolivia, cambiosParcela } = require('../utils/actividades');
+const { hoyEnBolivia, cambiosParcela, validarBaja, MOTIVOS_BAJA } = require('../utils/actividades');
 
 // Cobertura máxima de un nodo sensor (restricción check_cobertura_sensor de la tabla lotes)
 const SUPERFICIE_MAX_LOTE = 15;
@@ -127,7 +127,7 @@ const obtenerParcelas = async (req, res) => {
                 fecha_creacion AS "createdAt",
                 ST_AsGeoJSON(geom) AS geom
             FROM parcelas
-            WHERE usuario_id = $1
+            WHERE usuario_id = $1 AND activa
             ORDER BY nombre ASC;
         `;
 
@@ -184,7 +184,7 @@ const actualizarParcela = async (req, res) => {
             const previo = await client.query(
                 `SELECT p.nombre, tc.nombre AS cultivo
                  FROM parcelas p LEFT JOIN tipos_cultivo tc ON tc.tipo_cultivo_id = p.tipo_cultivo_id
-                 WHERE p.parcela_id = $1 AND p.usuario_id = $2
+                 WHERE p.parcela_id = $1 AND p.usuario_id = $2 AND p.activa
                  FOR UPDATE OF p`,
                 [parcela_id, usuario_id]
             );
@@ -226,30 +226,58 @@ const actualizarParcela = async (req, res) => {
 };
 
 /**
- * 🗑️ Elimina una parcela de la base de datos
+ * PATCH /api/parcelas/:id/baja — da de baja una parcela (baja lógica).
+ * La parcela deja de aparecer en el mapa, el tablero y el monitoreo, pero se conservan su bitácora,
+ * lotes y lecturas para el historial; en la bitácora queda el evento «Parcela dada de baja».
  */
-const eliminarParcela = async (req, res) => {
+const darDeBajaParcela = async (req, res) => {
+    const parcela_id = req.params.id;
+    const usuario_id = req.usuario.id;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parcela_id)) {
+        return res.status(404).json({ status: 'error', message: 'Parcela no encontrada, sin permisos o ya dada de baja.' });
+    }
+    const { errores, datos } = validarBaja(req.body);
+    if (errores.length > 0) {
+        return res.status(400).json({ status: 'error', message: errores[0], errores });
+    }
+
+    const client = await db.pool.connect();
     try {
-        const parcela_id = req.params.id;
-        const usuario_id = req.usuario.id;
-
-        const queryText = `
-            DELETE FROM parcelas 
-            WHERE parcela_id = $1 AND usuario_id = $2
-            RETURNING parcela_id;
-        `;
-
-        const result = await db.query(queryText, [parcela_id, usuario_id]);
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
+        await client.query('BEGIN');
+        const r = await client.query(
+            `UPDATE parcelas
+             SET activa = false, fecha_baja = CURRENT_TIMESTAMP, motivo_baja = $1, observacion_baja = $2, baja_por = $3
+             WHERE parcela_id = $4 AND usuario_id = $3 AND activa
+             RETURNING parcela_id, nombre, area_hectareas, ubicacion_nombre,
+                       (SELECT nombre FROM tipos_cultivo t WHERE t.tipo_cultivo_id = parcelas.tipo_cultivo_id) AS cultivo`,
+            [datos.motivo, datos.observacion, usuario_id, parcela_id]
+        );
+        if (r.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ status: 'error', message: 'Parcela no encontrada, sin permisos o ya dada de baja.' });
         }
-
-        res.status(200).json({ status: 'success', message: 'Parcela eliminada exitosamente.' });
-
+        const p = r.rows[0];
+        await client.query(
+            `INSERT INTO actividades_parcela (parcela_id, usuario_id, tipo, fecha, descripcion, detalle)
+             VALUES ($1, $2, 'baja_parcela', $3, $4, $5)`,
+            [parcela_id, usuario_id, hoyEnBolivia(), datos.observacion,
+                JSON.stringify({
+                    motivo: datos.motivo,
+                    motivo_texto: MOTIVOS_BAJA[datos.motivo],
+                    nombre: p.nombre,
+                    cultivo: p.cultivo,
+                    area_ha: Number(p.area_hectareas),
+                    ubicacion: p.ubicacion_nombre,
+                })]
+        );
+        await client.query('COMMIT');
+        res.status(200).json({ status: 'success', message: 'Parcela dada de baja. Su historial se conserva.' });
     } catch (error) {
-        console.error('Error al eliminar parcela:', error);
-        res.status(500).json({ status: 'error', message: 'Error en el servidor al eliminar.' });
+        await client.query('ROLLBACK');
+        console.error('Error al dar de baja la parcela:', error);
+        res.status(500).json({ status: 'error', message: 'Error en el servidor al dar de baja la parcela.' });
+    } finally {
+        client.release();
     }
 };
 
@@ -257,5 +285,5 @@ module.exports = {
     crearParcela,
     obtenerParcelas,
     actualizarParcela,
-    eliminarParcela
+    darDeBajaParcela
 };

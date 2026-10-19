@@ -15,8 +15,18 @@ import {
 } from '@/lib/actividades'
 import type { Parcel } from '@/lib/types'
 
+/** Datos de baja y responsable que llegan desde el historial (opcionales) */
+export type ParcelaConHistorial = Parcel & {
+  activa?: boolean
+  fechaBaja?: string | null
+  motivoBajaTexto?: string | null
+  observacionBaja?: string | null
+  bajaPor?: string | null
+  responsable?: string
+}
+
 interface ParcelHistoryProps {
-  parcel: Parcel | null
+  parcel: ParcelaConHistorial | null
   onOpenChange: (abierto: boolean) => void
   /** El agrónomo y el administrador registran labores; el productor solo consulta */
   puedeRegistrar: boolean
@@ -34,6 +44,16 @@ const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('es-BO', { hou
 function DetalleEventoSistema({ actividad }: { actividad: Actividad }) {
   const d = actividad.detalle
   if (!d) return null
+  if (actividad.tipo === 'baja_parcela') {
+    return (
+      <div className="mt-2 space-y-1 text-sm">
+        <p><span className="text-on-surface-variant">Motivo:</span> <span className="font-semibold text-[var(--error)]">{d.motivo_texto ?? d.motivo}</span></p>
+        <p className="text-on-surface-variant">
+          Datos al darse de baja: {[d.nombre, d.cultivo, d.area_ha !== undefined ? `${Number(d.area_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null, d.ubicacion].filter(Boolean).join(' · ')}
+        </p>
+      </div>
+    )
+  }
   if (actividad.tipo === 'edicion_parcela') {
     return (
       <ul className="mt-2 space-y-1">
@@ -69,7 +89,10 @@ function DetalleEventoSistema({ actividad }: { actividad: Actividad }) {
 
 const FORM_VACIO = { tipo: 'siembra' as TipoLabor, fecha: hoyISO(), producto: '', cantidad: '', unidad: 'kg/ha' as Unidad | '', descripcion: '' }
 
-export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHistoryProps) {
+export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegistrarRol }: ParcelHistoryProps) {
+  // Una parcela dada de baja conserva su bitácora en solo lectura
+  const dadaDeBaja = parcel?.activa === false
+  const puedeRegistrar = puedeRegistrarRol && !dadaDeBaja
   const [actividades, setActividades] = useState<Actividad[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -172,7 +195,23 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
               </SheetTitle>
               <SheetDescription className="text-on-surface-variant">
                 {getCropNameById(parcel.cropType)} · {parcel.area.toFixed(2)} ha{parcel.ubicacion_nombre ? ` · ${parcel.ubicacion_nombre}` : ''}
+                {parcel.responsable ? ` · Responsable: ${parcel.responsable}` : ''}
               </SheetDescription>
+              {dadaDeBaja && (
+                <div className="mt-3 rounded-lg bg-error-container px-4 py-3 text-sm text-[var(--on-error-container)] flex gap-2">
+                  <span className="material-symbols-outlined text-lg flex-none">block</span>
+                  <div>
+                    <p className="font-semibold">
+                      Parcela dada de baja{parcel.fechaBaja ? ` el ${new Date(parcel.fechaBaja).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+                      {parcel.motivoBajaTexto ? ` · ${parcel.motivoBajaTexto}` : ''}
+                    </p>
+                    {parcel.observacionBaja && <p className="mt-0.5">{parcel.observacionBaja}</p>}
+                    <p className="mt-0.5 text-xs opacity-80">
+                      {parcel.bajaPor ? `Por ${parcel.bajaPor}. ` : ''}Su historial se conserva en solo lectura.
+                    </p>
+                  </div>
+                </div>
+              )}
             </SheetHeader>
 
             <div className="p-6 space-y-6">
@@ -313,7 +352,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
                     Registrar labor
                   </Button>
                 )
-              ) : (
+              ) : dadaDeBaja ? null : (
                 <p className="text-sm text-on-surface-variant flex items-center gap-2 rounded-lg bg-surface-lowest px-4 py-3">
                   <span className="material-symbols-outlined text-base">info</span>
                   Las labores las registra el ingeniero agrónomo responsable de la parcela.

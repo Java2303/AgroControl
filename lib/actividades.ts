@@ -6,11 +6,21 @@ export type TipoLabor =
   | 'siembra' | 'fertilizacion' | 'encalado' | 'riego' | 'fitosanitario' | 'muestreo' | 'cosecha' | 'otra'
 
 /** Eventos que el sistema registra solo al crear o editar la parcela (no se anulan) */
-export type TipoEventoSistema = 'registro_parcela' | 'edicion_parcela'
+export type TipoEventoSistema = 'registro_parcela' | 'edicion_parcela' | 'baja_parcela'
 
 export type TipoActividad = TipoLabor | TipoEventoSistema
 
-export const EVENTOS_SISTEMA: TipoEventoSistema[] = ['registro_parcela', 'edicion_parcela']
+export const EVENTOS_SISTEMA: TipoEventoSistema[] = ['registro_parcela', 'edicion_parcela', 'baja_parcela']
+
+/** Motivos de baja de una parcela (coinciden con el backend y la base de datos) */
+export const MOTIVOS_BAJA = {
+  terreno_cerrado: 'Terreno cerrado',
+  fin_campania: 'Fin del ensayo o campaña',
+  venta_cesion: 'Venta o cesión del terreno',
+  error_registro: 'Registro erróneo o duplicado',
+  otro: 'Otro motivo',
+} as const
+export type MotivoBaja = keyof typeof MOTIVOS_BAJA
 export const esEventoSistema = (tipo: TipoActividad): tipo is TipoEventoSistema =>
   (EVENTOS_SISTEMA as TipoActividad[]).includes(tipo)
 
@@ -42,6 +52,7 @@ export const TIPOS_ACTIVIDAD: Record<TipoActividad, TemaActividad> = {
   otra:          { label: 'Otra labor',     icon: 'more_horiz',   color: '#495057', soft: '#eef0f2', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
   registro_parcela: { label: 'Parcela registrada', icon: 'add_location_alt', color: '#002147', soft: '#e3eef8', producto: null, unidad: null, cantidad: 'Cantidad' },
   edicion_parcela:  { label: 'Parcela editada',    icon: 'edit_note',        color: '#46607a', soft: '#e6edf3', producto: null, unidad: null, cantidad: 'Cantidad' },
+  baja_parcela:     { label: 'Parcela dada de baja', icon: 'block',          color: '#c92a2a', soft: '#fee2e2', producto: null, unidad: null, cantidad: 'Cantidad' },
 }
 
 /** Tipos que se ofrecen en el formulario (las labores manuales) */
@@ -65,6 +76,9 @@ export interface DetalleEvento {
   reconstruido?: boolean
   // edicion_parcela: cambios realizados
   cambios?: CambioParcela[]
+  // baja_parcela: motivo de la baja
+  motivo?: MotivoBaja
+  motivo_texto?: string
 }
 
 export interface Actividad {

@@ -54,3 +54,18 @@ describe('Pruebas Unitarias - Eventos de edición de la parcela (cambiosParcela)
     expect(cambiosParcela({ nombre: 'Lote A', cultivo: 'Trigo' }, { nombre: 'Lote A', cultivo: 'Trigo' })).toEqual([]);
   });
 });
+
+describe('Pruebas Unitarias - Baja lógica de parcelas (validarBaja)', () => {
+  const { validarBaja } = require('../utils/actividades');
+
+  test('Acepta un motivo del catálogo con observación opcional', () => {
+    expect(validarBaja({ motivo: 'terreno_cerrado' })).toEqual({ errores: [], datos: { motivo: 'terreno_cerrado', observacion: null } });
+    expect(validarBaja({ motivo: 'venta_cesion', observacion: '  Vendido a un tercero ' }).datos.observacion).toBe('Vendido a un tercero');
+  });
+
+  test('Rechaza motivos desconocidos y exige descripción si el motivo es «otro»', () => {
+    expect(validarBaja({ motivo: 'cansancio' }).errores).toContain('Seleccione un motivo de baja válido.');
+    expect(validarBaja({ motivo: 'otro' }).errores).toContain('Describa el motivo de la baja.');
+    expect(validarBaja({ motivo: 'otro', observacion: 'Inundación permanente' }).errores).toEqual([]);
+  });
+});

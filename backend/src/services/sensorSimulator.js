@@ -6,7 +6,7 @@ const SUPERFICIE_MAX_LOTE = 15;
 const simulateSensors = async () => {
     try {
         // 1. Obtener todas las parcelas de la base de datos
-        const resParcelas = await db.query('SELECT parcela_id, nombre, area_hectareas FROM parcelas');
+        const resParcelas = await db.query('SELECT parcela_id, nombre, area_hectareas FROM parcelas WHERE activa');
         const parcelas = resParcelas.rows;
 
         for (const parcela of parcelas) {
