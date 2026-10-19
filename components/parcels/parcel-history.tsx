@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { apiFetch } from '@/lib/api-client'
 import { getCropColor, getCropNameById } from '@/lib/crops'
 import {
-  ORDEN_TIPOS, TIPOS_ACTIVIDAD, UNIDADES, estadoCiclo, fechaLocal, hoyISO,
-  type Actividad, type TipoActividad, type Unidad,
+  ORDEN_TIPOS, TIPOS_ACTIVIDAD, UNIDADES, esEventoSistema, estadoCiclo, fechaLocal, hoyISO,
+  type Actividad, type TipoLabor, type Unidad,
 } from '@/lib/actividades'
 import type { Parcel } from '@/lib/types'
 
@@ -28,7 +28,46 @@ const fmtFecha = (iso: string, opciones: Intl.DateTimeFormatOptions = { day: 'nu
 const fmtCantidad = (a: Pick<Actividad, 'cantidad' | 'unidad'>) =>
   a.cantidad !== null && a.unidad ? `${a.cantidad.toLocaleString('es-BO', { maximumFractionDigits: 2 })} ${a.unidad}` : null
 
-const FORM_VACIO = { tipo: 'siembra' as TipoActividad, fecha: hoyISO(), producto: '', cantidad: '', unidad: 'kg/ha' as Unidad | '', descripcion: '' }
+const fmtHora = (iso: string) => new Date(iso).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
+/** Datos guardados con los eventos automáticos (registro y ediciones de la parcela) */
+function DetalleEventoSistema({ actividad }: { actividad: Actividad }) {
+  const d = actividad.detalle
+  if (!d) return null
+  if (actividad.tipo === 'edicion_parcela') {
+    return (
+      <ul className="mt-2 space-y-1">
+        {(d.cambios ?? []).map((c) => (
+          <li key={c.campo} className="text-sm text-on-surface flex flex-wrap items-center gap-x-1.5">
+            <span className="text-on-surface-variant">{c.etiqueta}:</span>
+            <span className="line-through text-on-surface-variant">{c.antes ?? '—'}</span>
+            <span className="material-symbols-outlined text-sm text-on-surface-variant" aria-label="cambió a">arrow_forward</span>
+            <span className="font-semibold">{c.despues ?? '—'}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+  const filas = [
+    ['Nombre', d.nombre],
+    ['Cultivo', d.cultivo],
+    ['Superficie', d.area_ha !== undefined ? `${Number(d.area_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
+    ['Ubicación', d.ubicacion],
+    ['Lote de monitoreo', d.lote_ha !== undefined ? `${Number(d.lote_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
+  ].filter(([, v]) => v)
+  return (
+    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
+      {filas.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="text-on-surface-variant">{k}</dt>
+          <dd className="text-on-surface font-medium">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+const FORM_VACIO = { tipo: 'siembra' as TipoLabor, fecha: hoyISO(), producto: '', cantidad: '', unidad: 'kg/ha' as Unidad | '', descripcion: '' }
 
 export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHistoryProps) {
   const [actividades, setActividades] = useState<Actividad[] | null>(null)
@@ -60,7 +99,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
     cargar()
   }, [cargar])
 
-  const elegirTipo = (tipo: TipoActividad) => {
+  const elegirTipo = (tipo: TipoLabor) => {
     const tema = TIPOS_ACTIVIDAD[tipo]
     setForm((f) => ({ ...f, tipo, unidad: tema.unidad ?? '', producto: tema.producto ? f.producto : '' }))
   }
@@ -116,7 +155,8 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
     return grupos
   }, [actividades])
 
-  const vigentes = (actividades ?? []).filter((a) => !a.anulada).length
+  // Se cuentan las labores de campo vigentes (no los eventos automáticos)
+  const vigentes = (actividades ?? []).filter((a) => !a.anulada && !esEventoSistema(a.tipo)).length
   const tema = TIPOS_ACTIVIDAD[form.tipo]
 
   return (
@@ -315,7 +355,11 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
                                     <p className={`font-semibold text-on-surface ${a.anulada ? 'line-through' : ''}`}>{t.label}</p>
                                     <p className="text-xs text-on-surface-variant">{fmtFecha(a.fecha, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>
                                   </div>
-                                  {a.anulada ? (
+                                  {esEventoSistema(a.tipo) ? (
+                                    <span className="flex-none text-[11px] font-semibold px-2 py-0.5 rounded-sm bg-surface-container text-on-surface-variant flex items-center gap-1" title="Registrado automáticamente por el sistema">
+                                      <span className="material-symbols-outlined text-xs">bolt</span>Automático
+                                    </span>
+                                  ) : a.anulada ? (
                                     <span className="flex-none text-[11px] font-bold px-2 py-0.5 rounded-sm bg-error-container text-[var(--error)]">Anulada</span>
                                   ) : (
                                     puedeRegistrar && anulando !== a.id && (
@@ -334,8 +378,15 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar }: ParcelHi
                                     {a.producto}{a.producto && cantidad ? ' · ' : ''}{cantidad && <span className="font-semibold">{cantidad}</span>}
                                   </p>
                                 )}
-                                {a.descripcion && <p className="mt-1 text-sm text-on-surface-variant">{a.descripcion}</p>}
-                                <p className="mt-2 text-[11px] text-on-surface-variant">Registrado por {a.registradoPor}</p>
+                                {esEventoSistema(a.tipo) && <DetalleEventoSistema actividad={a} />}
+                                {a.descripcion && a.tipo !== 'edicion_parcela' && (
+                                  <p className={`mt-1 text-sm text-on-surface-variant ${a.detalle?.reconstruido ? 'italic' : ''}`}>{a.descripcion}</p>
+                                )}
+                                <p className="mt-2 text-[11px] text-on-surface-variant">
+                                  {esEventoSistema(a.tipo)
+                                    ? `Por ${a.registradoPor} · ${fmtHora(a.fechaRegistro)}`
+                                    : `Registrado por ${a.registradoPor}`}
+                                </p>
 
                                 {a.anulada && (
                                   <p className="mt-2 text-xs text-[var(--error)]">

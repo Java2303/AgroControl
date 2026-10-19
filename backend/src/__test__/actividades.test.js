@@ -39,3 +39,18 @@ describe('Pruebas Unitarias - Bitácora de labores (validarActividad)', () => {
     expect(hoyEnBolivia(new Date('2026-10-19T03:00:00Z'))).toBe('2026-10-18');
   });
 });
+
+describe('Pruebas Unitarias - Eventos de edición de la parcela (cambiosParcela)', () => {
+  const { cambiosParcela } = require('../utils/actividades');
+
+  test('Registra cada campo modificado con su valor anterior y nuevo', () => {
+    expect(cambiosParcela({ nombre: 'Lote A', cultivo: 'Trigo' }, { nombre: 'Lote A Norte', cultivo: 'Soya (Soja)' })).toEqual([
+      { campo: 'nombre', etiqueta: 'Nombre', antes: 'Lote A', despues: 'Lote A Norte' },
+      { campo: 'cultivo', etiqueta: 'Cultivo', antes: 'Trigo', despues: 'Soya (Soja)' },
+    ]);
+  });
+
+  test('Si no cambia nada, no genera evento', () => {
+    expect(cambiosParcela({ nombre: 'Lote A', cultivo: 'Trigo' }, { nombre: 'Lote A', cultivo: 'Trigo' })).toEqual([]);
+  });
+});

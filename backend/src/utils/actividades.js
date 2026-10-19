@@ -69,4 +69,22 @@ function hoyEnBolivia(ahora = new Date()) {
     return new Date(ahora.getTime() - 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-module.exports = { TIPOS_ACTIVIDAD, UNIDADES, validarActividad, hoyEnBolivia };
+/** Eventos que el sistema registra solo (no se crean ni se anulan desde la API de labores). */
+const EVENTOS_SISTEMA = ['registro_parcela', 'edicion_parcela'];
+
+const CAMPOS_EDITABLES = {
+    nombre: 'Nombre',
+    cultivo: 'Cultivo',
+};
+
+/**
+ * Compara los datos de una parcela antes y después de una edición.
+ * Devuelve la lista de cambios [{ campo, etiqueta, antes, despues }] (vacía si no cambió nada).
+ */
+function cambiosParcela(antes, despues) {
+    return Object.keys(CAMPOS_EDITABLES)
+        .filter((campo) => (antes[campo] ?? null) !== (despues[campo] ?? null))
+        .map((campo) => ({ campo, etiqueta: CAMPOS_EDITABLES[campo], antes: antes[campo] ?? null, despues: despues[campo] ?? null }));
+}
+
+module.exports = { TIPOS_ACTIVIDAD, UNIDADES, EVENTOS_SISTEMA, validarActividad, hoyEnBolivia, cambiosParcela };

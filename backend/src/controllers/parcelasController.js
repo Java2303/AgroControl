@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { validarLimiteHectareas } = require('../utils/validators');
+const { hoyEnBolivia, cambiosParcela } = require('../utils/actividades');
 
 // Cobertura máxima de un nodo sensor (restricción check_cobertura_sensor de la tabla lotes)
 const SUPERFICIE_MAX_LOTE = 15;
@@ -55,8 +56,34 @@ const crearParcela = async (req, res) => {
             geometriaStr
         ];
 
-        const result = await db.query(queryText, values);
-        const parcelaCreada = result.rows[0];
+        // La parcela y su evento de registro en la bitácora se guardan juntos (transacción)
+        const client = await db.pool.connect();
+        let parcelaCreada;
+        try {
+            await client.query('BEGIN');
+            const result = await client.query(queryText, values);
+            parcelaCreada = result.rows[0];
+            const cultivo = await client.query('SELECT nombre FROM tipos_cultivo WHERE tipo_cultivo_id = $1', [parcelaCreada.tipo_cultivo_id]);
+            await client.query(
+                `INSERT INTO actividades_parcela (parcela_id, usuario_id, tipo, fecha, descripcion, detalle)
+                 VALUES ($1, $2, 'registro_parcela', $3, $4, $5)`,
+                [parcelaCreada.parcela_id, usuario_id, hoyEnBolivia(), 'Parcela registrada en el sistema desde el mapa satelital.',
+                    JSON.stringify({
+                        nombre: parcelaCreada.nombre,
+                        cultivo: cultivo.rows[0]?.nombre ?? null,
+                        tipo_cultivo_id: parcelaCreada.tipo_cultivo_id,
+                        area_ha: Number(parcelaCreada.area_hectareas),
+                        ubicacion: ubicacion_nombre.trim(),
+                        lote_ha: Math.min(Number(parcelaCreada.area_hectareas), SUPERFICIE_MAX_LOTE),
+                    })]
+            );
+            await client.query('COMMIT');
+        } catch (errTx) {
+            await client.query('ROLLBACK');
+            throw errTx;
+        } finally {
+            client.release();
+        }
 
         // 3. Crear automáticamente un lote principal para sensores IoT
         try {
@@ -150,20 +177,47 @@ const actualizarParcela = async (req, res) => {
         else if (cropType === 'citricos') tipo_cultivo_id = 13;
         else if (cropType === 'hortalizas') tipo_cultivo_id = 14;
 
-        const queryText = `
-            UPDATE parcelas 
-            SET nombre = $1, tipo_cultivo_id = $2
-            WHERE parcela_id = $3 AND usuario_id = $4
-            RETURNING parcela_id, nombre;
-        `;
+        // Se lee el estado anterior, se actualiza y se registran los cambios en la bitácora en una sola transacción
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const previo = await client.query(
+                `SELECT p.nombre, tc.nombre AS cultivo
+                 FROM parcelas p LEFT JOIN tipos_cultivo tc ON tc.tipo_cultivo_id = p.tipo_cultivo_id
+                 WHERE p.parcela_id = $1 AND p.usuario_id = $2
+                 FOR UPDATE OF p`,
+                [parcela_id, usuario_id]
+            );
+            if (previo.rowCount === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
+            }
 
-        const result = await db.query(queryText, [name, tipo_cultivo_id, parcela_id, usuario_id]);
+            const result = await client.query(
+                `UPDATE parcelas SET nombre = $1, tipo_cultivo_id = $2
+                 WHERE parcela_id = $3 AND usuario_id = $4
+                 RETURNING parcela_id, nombre`,
+                [name.trim(), tipo_cultivo_id, parcela_id, usuario_id]
+            );
+            const cultivoNuevo = await client.query('SELECT nombre FROM tipos_cultivo WHERE tipo_cultivo_id = $1', [tipo_cultivo_id]);
 
-        if (result.rowCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
+            const cambios = cambiosParcela(previo.rows[0], { nombre: name.trim(), cultivo: cultivoNuevo.rows[0]?.nombre ?? null });
+            if (cambios.length > 0) {
+                await client.query(
+                    `INSERT INTO actividades_parcela (parcela_id, usuario_id, tipo, fecha, descripcion, detalle)
+                     VALUES ($1, $2, 'edicion_parcela', $3, $4, $5)`,
+                    [parcela_id, usuario_id, hoyEnBolivia(), `Se modificó: ${cambios.map((c) => c.etiqueta.toLowerCase()).join(' y ')}.`, JSON.stringify({ cambios })]
+                );
+            }
+            await client.query('COMMIT');
+
+            res.status(200).json({ status: 'success', message: 'Parcela actualizada.', data: { ...result.rows[0], cambios: cambios.length } });
+        } catch (errTx) {
+            await client.query('ROLLBACK');
+            throw errTx;
+        } finally {
+            client.release();
         }
-
-        res.status(200).json({ status: 'success', message: 'Parcela actualizada.', data: result.rows[0] });
 
     } catch (error) {
         console.error('Error al actualizar parcela:', error);

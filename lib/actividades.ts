@@ -1,8 +1,18 @@
 // Catálogo de labores agrícolas de la bitácora de cada parcela.
 // Los tipos y unidades coinciden con backend/src/utils/actividades.js y con la tabla actividades_parcela.
 
-export type TipoActividad =
+/** Labores que el agrónomo registra a mano */
+export type TipoLabor =
   | 'siembra' | 'fertilizacion' | 'encalado' | 'riego' | 'fitosanitario' | 'muestreo' | 'cosecha' | 'otra'
+
+/** Eventos que el sistema registra solo al crear o editar la parcela (no se anulan) */
+export type TipoEventoSistema = 'registro_parcela' | 'edicion_parcela'
+
+export type TipoActividad = TipoLabor | TipoEventoSistema
+
+export const EVENTOS_SISTEMA: TipoEventoSistema[] = ['registro_parcela', 'edicion_parcela']
+export const esEventoSistema = (tipo: TipoActividad): tipo is TipoEventoSistema =>
+  (EVENTOS_SISTEMA as TipoActividad[]).includes(tipo)
 
 export const UNIDADES = ['kg/ha', 'L/ha', 't/ha', 'qq/ha', 'mm', 'kg', 'L', 't', 'qq', 'unidades'] as const
 export type Unidad = (typeof UNIDADES)[number]
@@ -30,9 +40,32 @@ export const TIPOS_ACTIVIDAD: Record<TipoActividad, TemaActividad> = {
   muestreo:      { label: 'Muestreo de suelo', icon: 'labs',      color: '#46607a', soft: '#e6edf3', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
   cosecha:       { label: 'Cosecha',        icon: 'agriculture',  color: '#b35c00', soft: '#fff1e0', producto: null,                    unidad: 't/ha',  cantidad: 'Rendimiento' },
   otra:          { label: 'Otra labor',     icon: 'more_horiz',   color: '#495057', soft: '#eef0f2', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
+  registro_parcela: { label: 'Parcela registrada', icon: 'add_location_alt', color: '#002147', soft: '#e3eef8', producto: null, unidad: null, cantidad: 'Cantidad' },
+  edicion_parcela:  { label: 'Parcela editada',    icon: 'edit_note',        color: '#46607a', soft: '#e6edf3', producto: null, unidad: null, cantidad: 'Cantidad' },
 }
 
-export const ORDEN_TIPOS = Object.keys(TIPOS_ACTIVIDAD) as TipoActividad[]
+/** Tipos que se ofrecen en el formulario (las labores manuales) */
+export const ORDEN_TIPOS: TipoLabor[] = ['siembra', 'fertilizacion', 'encalado', 'riego', 'fitosanitario', 'muestreo', 'cosecha', 'otra']
+
+export interface CambioParcela {
+  campo: string
+  etiqueta: string
+  antes: string | null
+  despues: string | null
+}
+
+/** Datos guardados con los eventos del sistema */
+export interface DetalleEvento {
+  // registro_parcela: foto de la parcela al registrarse
+  nombre?: string
+  cultivo?: string | null
+  area_ha?: number
+  ubicacion?: string | null
+  lote_ha?: number
+  reconstruido?: boolean
+  // edicion_parcela: cambios realizados
+  cambios?: CambioParcela[]
+}
 
 export interface Actividad {
   id: string
@@ -43,6 +76,7 @@ export interface Actividad {
   cantidad: number | null
   unidad: Unidad | null
   descripcion: string | null
+  detalle: DetalleEvento | null
   anulada: boolean
   motivoAnulacion: string | null
   fechaAnulacion: string | null

@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const { validarActividad, hoyEnBolivia } = require('../utils/actividades');
+const { validarActividad, hoyEnBolivia, EVENTOS_SISTEMA } = require('../utils/actividades');
 
 /** La parcela debe existir y pertenecer al usuario autenticado (RN-07). */
 async function parcelaDelUsuario(parcelaId, usuarioId) {
@@ -18,6 +18,7 @@ const COLUMNAS = `
     a.cantidad,
     a.unidad,
     a.descripcion,
+    a.detalle,
     a.anulada,
     a.motivo_anulacion AS "motivoAnulacion",
     a.fecha_anulacion AS "fechaAnulacion",
@@ -95,14 +96,16 @@ const anularActividad = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'Indique el motivo de la anulación (entre 5 y 300 caracteres).' });
         }
 
-        // Solo el dueño de la parcela puede anular, y una labor ya anulada no se vuelve a anular
+        // Solo el dueño de la parcela puede anular; una labor ya anulada no se vuelve a anular
+        // y los eventos del sistema (registro y ediciones de la parcela) no se anulan
         const r = await db.query(
             `UPDATE actividades_parcela a
              SET anulada = true, motivo_anulacion = $1, anulada_por = $2, fecha_anulacion = CURRENT_TIMESTAMP
              FROM parcelas p
              WHERE a.actividad_id = $3 AND a.parcela_id = p.parcela_id AND p.usuario_id = $2 AND a.anulada = false
+               AND a.tipo <> ALL($4::text[])
              RETURNING a.actividad_id AS id`,
-            [motivo, req.usuario.id, actividadId]
+            [motivo, req.usuario.id, actividadId, EVENTOS_SISTEMA]
         );
 
         if (r.rowCount === 0) {
