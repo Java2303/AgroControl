@@ -39,6 +39,8 @@ export function ParcelsView() {
   const [editData, setEditData] = useState({ name: '', cropType: '' })
   const [accionError, setAccionError] = useState<string | null>(null)
   const [parcelaBitacora, setParcelaBitacora] = useState<Parcel | null>(null)
+  const [parcelaSensor, setParcelaSensor] = useState<Parcel | null>(null)
+  const [sensor, setSensor] = useState<{ mac: string; guardando: boolean; error: string | null; token: string | null; copiado: boolean }>({ mac: '', guardando: false, error: null, token: null, copiado: false })
   // Matriz de permisos (Cuadro 3.36): el productor consulta la bitácora, no registra labores
   const puedeRegistrarLabores = state.user?.userType !== 'productor'
 
@@ -96,6 +98,50 @@ export function ParcelsView() {
       setParcelaBaja(null)
     } catch (err) {
       setBaja((b) => ({ ...b, guardando: false, error: err instanceof Error ? err.message : 'No se pudo dar de baja la parcela.' }))
+    }
+  }
+
+  const abrirSensor = (parcel: Parcel) => {
+    setSensor({ mac: parcel.sensorMac ?? '', guardando: false, error: null, token: null, copiado: false })
+    setParcelaSensor(parcel)
+  }
+
+  // Vincula el nodo ESP32 por su MAC; la API devuelve la clave del dispositivo una sola vez
+  const vincularSensor = async () => {
+    if (!parcelaSensor) return
+    setSensor((s) => ({ ...s, guardando: true, error: null }))
+    try {
+      const r = await apiFetch<{ data: { mac: string; token: string } }>(`/parcelas/${parcelaSensor.id}/dispositivo`, {
+        method: 'POST',
+        body: JSON.stringify({ mac: sensor.mac }),
+      })
+      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: r.data.mac, sensorUltimaLectura: null } : p)))
+      setParcelaSensor({ ...parcelaSensor, sensorMac: r.data.mac, sensorUltimaLectura: null })
+      setSensor((s) => ({ ...s, guardando: false, token: r.data.token, mac: r.data.mac }))
+    } catch (err) {
+      setSensor((s) => ({ ...s, guardando: false, error: err instanceof Error ? err.message : 'No se pudo vincular el sensor.' }))
+    }
+  }
+
+  const desvincularSensor = async () => {
+    if (!parcelaSensor) return
+    setSensor((s) => ({ ...s, guardando: true, error: null }))
+    try {
+      await apiFetch(`/parcelas/${parcelaSensor.id}/dispositivo`, { method: 'DELETE' })
+      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: null, sensorUltimaLectura: null } : p)))
+      setParcelaSensor(null)
+    } catch (err) {
+      setSensor((s) => ({ ...s, guardando: false, error: err instanceof Error ? err.message : 'No se pudo desvincular el sensor.' }))
+    }
+  }
+
+  const copiarToken = async () => {
+    if (!sensor.token) return
+    try {
+      await navigator.clipboard.writeText(sensor.token)
+      setSensor((s) => ({ ...s, copiado: true }))
+    } catch {
+      // Sin permiso de portapapeles: la clave sigue visible para copiarla a mano
     }
   }
 
@@ -247,6 +293,18 @@ export function ParcelsView() {
                     >
                       <span className="material-symbols-outlined text-base">map</span>
                     </Button>
+                    {puedeRegistrarLabores && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => abrirSensor(parcel)}
+                        className={`border-0 ${parcel.sensorMac ? 'bg-success-container text-[var(--success)] hover:bg-success-container/80' : 'bg-surface-high hover:bg-surface-container'}`}
+                        aria-label={parcel.sensorMac ? 'Sensor vinculado' : 'Vincular sensor'}
+                        title={parcel.sensorMac ? `Sensor ${parcel.sensorMac}` : 'Vincular sensor'}
+                      >
+                        <span className="material-symbols-outlined text-base">sensors</span>
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -351,6 +409,77 @@ export function ParcelsView() {
             >
               Guardar Cambios
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sensor ESP32 */}
+      <Dialog open={!!parcelaSensor} onOpenChange={(abierto) => { if (!abierto) setParcelaSensor(null) }}>
+        <DialogContent className="sm:max-w-md border-0 shadow-elevated">
+          <DialogHeader>
+            <DialogTitle className="text-headline text-on-surface">Sensor de la parcela</DialogTitle>
+            <DialogDescription className="text-on-surface-variant">
+              Vincule el nodo ESP32 de «{parcelaSensor?.name}» con su dirección MAC. Desde entonces la parcela recibe lecturas reales
+              y el simulador deja de escribir en ella.
+            </DialogDescription>
+          </DialogHeader>
+          {sensor.token ? (
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-on-surface">
+                Sensor <span className="font-mono font-semibold">{sensor.mac}</span> vinculado. Copie esta clave en el firmware del nodo
+                (<span className="font-mono">DEVICE_TOKEN</span>): <strong>no se volverá a mostrar</strong>.
+              </p>
+              <div className="flex gap-2">
+                <Input readOnly value={sensor.token} className="font-mono text-xs bg-surface-high border-0 h-11" onFocus={(e) => e.target.select()} />
+                <Button onClick={copiarToken} className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0 h-11">
+                  <span className="material-symbols-outlined text-base mr-1">{sensor.copiado ? 'check' : 'content_copy'}</span>
+                  {sensor.copiado ? 'Copiada' : 'Copiar'}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              {parcelaSensor?.sensorMac && (
+                <div className="bg-success-container rounded-lg p-3 text-sm text-on-surface">
+                  <p>Vinculado: <span className="font-mono font-semibold">{parcelaSensor.sensorMac}</span></p>
+                  <p className="text-on-surface-variant mt-0.5">
+                    Última lectura: {parcelaSensor.sensorUltimaLectura ? new Date(parcelaSensor.sensorUltimaLectura).toLocaleString('es-BO') : 'todavía no recibida'}
+                  </p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-on-surface">Dirección MAC del ESP32</label>
+                <Input
+                  value={sensor.mac}
+                  onChange={(e) => setSensor({ ...sensor, mac: e.target.value })}
+                  placeholder="AA:BB:CC:DD:EE:FF"
+                  className="font-mono bg-surface-high border-0 h-11 rounded-lg"
+                />
+                <p className="text-xs text-on-surface-variant">El firmware la muestra en el monitor serie al encender el nodo.</p>
+              </div>
+              {sensor.error && <p className="text-sm text-[var(--error)]">{sensor.error}</p>}
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            {sensor.token ? (
+              <Button onClick={() => setParcelaSensor(null)} className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0">Listo</Button>
+            ) : (
+              <>
+                {parcelaSensor?.sensorMac && (
+                  <Button variant="outline" onClick={desvincularSensor} disabled={sensor.guardando} className="bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)] mr-auto">
+                    Desvincular
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setParcelaSensor(null)} className="bg-surface-high border-0">Cancelar</Button>
+                <Button
+                  onClick={vincularSensor}
+                  disabled={sensor.guardando || !sensor.mac.trim()}
+                  className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0"
+                >
+                  {sensor.guardando ? 'Guardando…' : parcelaSensor?.sensorMac ? 'Generar nueva clave' : 'Vincular'}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

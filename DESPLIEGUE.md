@@ -81,7 +81,26 @@ npm run admin:crear -- correo@ciat.bo "Nombre Completo" CI-123
 
 Si el correo ya existe, solo se le asigna el rol. El administrador ve en **Historial** las parcelas de toda la institución, activas y dadas de baja, con su bitácora.
 
-## 6. App Android (APK)
+## 6. Nodos ESP32 (lecturas reales)
+
+1. En **Parcelas**, el agrónomo pulsa el botón del sensor de la parcela, ingresa la MAC del ESP32 y pulsa **Vincular**. La clave del dispositivo se muestra **una sola vez**: cópiela en el firmware.
+2. El nodo envía cada lectura a `POST https://<tu-servicio>.onrender.com/api/telemetria` con la cabecera `X-Dispositivo-Token: <clave>` y el JSON:
+
+   ```json
+   { "mac": "AA:BB:CC:DD:EE:FF", "humedad": 54.3, "temperatura": 24.1, "conductividad": 412,
+     "ph": 6.4, "nitrogeno": 96, "fosforo": 58, "potasio": 141 }
+   ```
+
+   `timestamp` (ISO 8601) es opcional; si falta o el reloj del nodo está desfasado, se usa la hora del servidor. Respuestas: `201` registrada, `400` valor fuera del rango físico del sensor, `401` MAC o clave incorrecta, `429` más de 30 envíos por minuto.
+3. Desde ese momento el simulador deja de escribir en esa parcela. **Desvincular** la devuelve al simulador.
+
+Para probar sin hardware, imite al nodo desde `backend`:
+
+```powershell
+npm run nodo:simular -- https://<tu-servicio>.onrender.com/api AA:BB:CC:DD:EE:FF <clave> 60
+```
+
+## 7. App Android (APK)
 
 En la raíz del proyecto:
 

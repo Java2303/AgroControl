@@ -6,7 +6,11 @@ const SUPERFICIE_MAX_LOTE = 15;
 const simulateSensors = async () => {
     try {
         // 1. Obtener todas las parcelas de la base de datos
-        const resParcelas = await db.query('SELECT parcela_id, nombre, area_hectareas FROM parcelas WHERE activa');
+        // Las parcelas con un nodo ESP32 vinculado reciben lecturas reales por POST /api/telemetria
+        const resParcelas = await db.query(
+            `SELECT parcela_id, nombre, area_hectareas FROM parcelas p
+             WHERE activa AND NOT EXISTS (SELECT 1 FROM lotes l WHERE l.parcela_id = p.parcela_id AND l.dispositivo_token_hash IS NOT NULL)`
+        );
         const parcelas = resParcelas.rows;
 
         for (const parcela of parcelas) {
@@ -60,6 +64,7 @@ const simulateSensors = async () => {
                 ) t
                 WHERE t.rn <= 50
             )
+            AND lote_id IN (SELECT lote_id FROM lotes WHERE dispositivo_token_hash IS NULL)
         `);
 
     } catch (err) {

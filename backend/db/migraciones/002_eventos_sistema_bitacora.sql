@@ -5,9 +5,11 @@
 ALTER TABLE public.actividades_parcela ADD COLUMN IF NOT EXISTS detalle jsonb;
 
 ALTER TABLE public.actividades_parcela DROP CONSTRAINT IF EXISTS actividad_tipo_valido;
+-- Incluye 'baja_parcela' (de la 003): al volver a ejecutar las migraciones sobre una base con
+-- bajas registradas, una lista sin ese tipo violaría la restricción y detendría db:init.
 ALTER TABLE public.actividades_parcela ADD CONSTRAINT actividad_tipo_valido CHECK (tipo IN (
     'siembra', 'fertilizacion', 'encalado', 'riego', 'fitosanitario', 'muestreo', 'cosecha', 'otra',
-    'registro_parcela', 'edicion_parcela'
+    'registro_parcela', 'edicion_parcela', 'baja_parcela'
 ));
 
 -- Los eventos del sistema son hechos, no anotaciones: no se pueden anular

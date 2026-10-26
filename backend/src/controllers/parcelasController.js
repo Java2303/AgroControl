@@ -125,8 +125,15 @@ const obtenerParcelas = async (req, res) => {
                 tipo_cultivo_id AS "cropType", 
                 area_hectareas AS area,
                 fecha_creacion AS "createdAt",
-                ST_AsGeoJSON(geom) AS geom
+                ST_AsGeoJSON(geom) AS geom,
+                l.dispositivo_mac AS "sensorMac",
+                l.ultima_sincronizacion AS "sensorUltimaLectura"
             FROM parcelas
+            LEFT JOIN LATERAL (
+                SELECT dispositivo_mac, ultima_sincronizacion FROM lotes
+                WHERE lotes.parcela_id = parcelas.parcela_id AND dispositivo_token_hash IS NOT NULL
+                LIMIT 1
+            ) l ON true
             WHERE usuario_id = $1 AND activa
             ORDER BY nombre ASC;
         `;

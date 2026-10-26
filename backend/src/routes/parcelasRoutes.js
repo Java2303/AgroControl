@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const parcelasController = require('../controllers/parcelasController');
+const telemetriaController = require('../controllers/telemetriaController');
 const authMiddlware = require('../middlewares/authMiddlware');
 const { permitirRoles } = require('../middlewares/authMiddlware');
 
@@ -12,5 +13,8 @@ router.get('/', authMiddlware, parcelasController.obtenerParcelas);
 router.put('/:id', authMiddlware, gestionParcelas, parcelasController.actualizarParcela);
 // Baja lógica: las parcelas no se eliminan, se dan de baja conservando su historial
 router.patch('/:id/baja', authMiddlware, gestionParcelas, parcelasController.darDeBajaParcela);
+// Nodo ESP32 del lote de la parcela (POST devuelve la clave del dispositivo una sola vez)
+router.post('/:id/dispositivo', authMiddlware, gestionParcelas, telemetriaController.vincularDispositivo);
+router.delete('/:id/dispositivo', authMiddlware, gestionParcelas, telemetriaController.desvincularDispositivo);
 
 module.exports = router;

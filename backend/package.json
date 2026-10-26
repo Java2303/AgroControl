@@ -9,7 +9,8 @@
     "db:init": "node src/scripts/initDb.js",
     "db:seed-demo": "node src/scripts/seedRandomDemoData.js",
     "test": "jest --coverage",
-    "admin:crear": "node src/scripts/crearAdmin.js"
+    "admin:crear": "node src/scripts/crearAdmin.js",
+    "nodo:simular": "node src/scripts/simularNodo.js"
   },
   "keywords": [],
   "author": "",

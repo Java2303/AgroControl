@@ -13,6 +13,8 @@ interface ParcelaApi {
   area: string | number
   createdAt?: string
   geom?: string | { coordinates?: number[][][] }
+  sensorMac?: string | null
+  sensorUltimaLectura?: string | null
 }
 
 /** Convierte el GeoJSON (Polygon) de PostGIS en vértices lat/lng sin el punto de cierre. */
@@ -42,6 +44,8 @@ function mapearParcela(p: ParcelaApi): Parcel {
     soilStatus: 'optimo',
     coordinates: geomACoordenadas(p.geom),
     createdAt: p.createdAt,
+    sensorMac: p.sensorMac ?? null,
+    sensorUltimaLectura: p.sensorUltimaLectura ?? null,
   }
 }
 

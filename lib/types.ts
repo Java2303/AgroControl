@@ -19,6 +19,9 @@ export interface Parcel {
   ubicacion_nombre?: string
   coordinates?: MapPoint[]
   createdAt?: string
+  /** MAC del nodo ESP32 vinculado; null si la parcela usa el simulador */
+  sensorMac?: string | null
+  sensorUltimaLectura?: string | null
 }
 
 /** Lectura actual de un sensor tal como la entrega GET /api/sensores */
