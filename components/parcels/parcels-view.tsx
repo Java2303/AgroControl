@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useApp } from '@/lib/app-context'
-import type { Parcel } from '@/lib/types'
+import type { CertificadoSuelo, Parcel } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +39,7 @@ export function ParcelsView() {
   const [editData, setEditData] = useState({ name: '', cropType: '' })
   const [accionError, setAccionError] = useState<string | null>(null)
   const [parcelaBitacora, setParcelaBitacora] = useState<Parcel | null>(null)
+  const [certificado, setCertificado] = useState<{ parcela: Parcel; cargando: boolean; error: string | null; cert: CertificadoSuelo | null } | null>(null)
   const [parcelaSensor, setParcelaSensor] = useState<Parcel | null>(null)
   const [sensor, setSensor] = useState<{ mac: string; guardando: boolean; error: string | null; token: string | null; copiado: boolean }>({ mac: '', guardando: false, error: null, token: null, copiado: false })
   // Matriz de permisos (Cuadro 3.36): el productor consulta la bitácora, no registra labores
@@ -98,6 +99,17 @@ export function ParcelsView() {
       setParcelaBaja(null)
     } catch (err) {
       setBaja((b) => ({ ...b, guardando: false, error: err instanceof Error ? err.message : 'No se pudo dar de baja la parcela.' }))
+    }
+  }
+
+  // RF-18: el certificado se emite con la última lectura del lote y queda registrado con su código
+  const emitirCertificado = async (parcel: Parcel) => {
+    setCertificado({ parcela: parcel, cargando: true, error: null, cert: null })
+    try {
+      const r = await apiFetch<{ data: CertificadoSuelo }>(`/parcelas/${parcel.id}/certificado`, { method: 'POST' })
+      setCertificado({ parcela: parcel, cargando: false, error: null, cert: r.data })
+    } catch (err) {
+      setCertificado({ parcela: parcel, cargando: false, error: err instanceof Error ? err.message : 'No se pudo emitir el certificado.', cert: null })
     }
   }
 
@@ -297,6 +309,18 @@ export function ParcelsView() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => emitirCertificado(parcel)}
+                        className="bg-surface-high border-0 hover:bg-surface-container"
+                        aria-label="Emitir certificado de suelo"
+                        title="Emitir certificado de suelo"
+                      >
+                        <span className="material-symbols-outlined text-base">workspace_premium</span>
+                      </Button>
+                    )}
+                    {puedeRegistrarLabores && (
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => abrirSensor(parcel)}
                         className={`border-0 ${parcel.sensorMac ? 'bg-success-container text-[var(--success)] hover:bg-success-container/80' : 'bg-surface-high hover:bg-surface-container'}`}
                         aria-label={parcel.sensorMac ? 'Sensor vinculado' : 'Vincular sensor'}
@@ -409,6 +433,50 @@ export function ParcelsView() {
             >
               Guardar Cambios
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Certificado de suelo */}
+      <Dialog open={!!certificado} onOpenChange={(abierto) => { if (!abierto) setCertificado(null) }}>
+        <DialogContent className="sm:max-w-md border-0 shadow-elevated">
+          <DialogHeader>
+            <DialogTitle className="text-headline text-on-surface">Certificado de suelo</DialogTitle>
+            <DialogDescription className="text-on-surface-variant">
+              «{certificado?.parcela.name}», con la última lectura del lote y la tabla de interpretación del CIAT.
+            </DialogDescription>
+          </DialogHeader>
+          {certificado?.cargando && <p className="text-sm text-on-surface-variant py-2">Emitiendo el certificado…</p>}
+          {certificado?.error && <p className="text-sm text-[var(--error)] py-2">{certificado.error}</p>}
+          {certificado?.cert && (
+            <div className="space-y-3 py-2 text-sm text-on-surface">
+              <div className="flex items-center justify-between gap-3 bg-surface-high rounded-lg p-3">
+                <div>
+                  <p className="text-xs text-on-surface-variant">Código de verificación</p>
+                  <p className="font-mono font-bold">{certificado.cert.codigo}</p>
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-sm ${STATUS_CHIP[certificado.cert.calificacion === 'Óptimo' ? 'optimo' : certificado.cert.calificacion === 'Crítico' ? 'critico' : 'alerta']}`}>
+                  {certificado.cert.calificacion}
+                </span>
+              </div>
+              <p>{certificado.cert.diagnostico}</p>
+              <p className="text-xs text-on-surface-variant">Origen de la lectura: {certificado.cert.origen}</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setCertificado(null)} className="bg-surface-high border-0">Cerrar</Button>
+            {certificado?.cert && (
+              <Button asChild className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0">
+                {/* En la app móvil se abre en la misma vista; en la web, en otra pestaña */}
+                <a
+                  href={`/verificar/?codigo=${certificado.cert.codigo}`}
+                  target={typeof window !== 'undefined' && window.location.origin === 'https://localhost' ? undefined : '_blank'}
+                  rel="noopener"
+                >
+                  <span className="material-symbols-outlined text-base mr-1">description</span>Ver e imprimir
+                </a>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

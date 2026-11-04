@@ -14,11 +14,13 @@ const obtenerRecomendaciones = async (req, res) => {
         p.nombre AS "parcelName",
         ls.humedad_suelo AS humidity,
         ls.ph AS ph,
-        ls.nitrogeno AS nitrogen
+        ls.nitrogeno AS nitrogen,
+        ls.fosforo AS phosphorus,
+        ls.potasio AS potassium
       FROM parcelas p
       JOIN lotes l ON p.parcela_id = l.parcela_id
       LEFT JOIN LATERAL (
-        SELECT humedad_suelo, ph, nitrogeno
+        SELECT humedad_suelo, ph, nitrogeno, fosforo, potasio
         FROM lecturas_suelo
         WHERE lote_id = l.lote_id
         ORDER BY fecha_captura DESC

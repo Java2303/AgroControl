@@ -2,6 +2,8 @@
  * Motor de reglas agronómicas determinista.
  * Evalúa la última lectura de cada parcela y devuelve hasta 3 recomendaciones priorizadas.
  */
+const { clasificarFosforo, clasificarPotasio } = require('./interpretacionCiat');
+
 const generarRecomendacionesReglas = (readings) => {
   const recommendations = [];
 
@@ -42,7 +44,19 @@ const generarRecomendacionesReglas = (readings) => {
     });
   }
 
-  // 4. Agregar recomendación de éxito general si todo está bien
+  // 4. R-04: fósforo o potasio en nivel bajo según la tabla del CIAT (Cuadro 3.3)
+  const parcelasPKBajo = readings.filter(r =>
+    (r.phosphorus != null && clasificarFosforo(r.phosphorus) === 'Bajo') ||
+    (r.potassium != null && clasificarPotasio(r.potassium) === 'Bajo'));
+  if (parcelasPKBajo.length > 0) {
+    recommendations.push({
+      text: `Fósforo o potasio bajo según la tabla del CIAT en ${parcelasPKBajo.map(p => p.parcelName).join(', ')}. Considere fertilización fosfatada o potásica y un análisis de laboratorio confirmatorio.`,
+      icon: 'science',
+      priority: 'warning'
+    });
+  }
+
+  // 5. Agregar recomendación de éxito general si todo está bien
   if (recommendations.length === 0) {
     recommendations.push({
       text: 'Niveles de nutrientes y humedad óptimos en todos tus cultivos. Monitoreo estable.',

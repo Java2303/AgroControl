@@ -65,6 +65,7 @@ const simulateSensors = async () => {
                 WHERE t.rn <= 50
             )
             AND lote_id IN (SELECT lote_id FROM lotes WHERE dispositivo_token_hash IS NULL)
+            AND lectura_id NOT IN (SELECT lectura_id FROM reportes)  -- la lectura de un certificado se conserva
         `);
 
     } catch (err) {

@@ -74,7 +74,8 @@ const vincularDispositivo = async (req, res) => {
             [mac, loteId]
         );
         if (!hashPrevio) {
-            await client.query('DELETE FROM lecturas_suelo WHERE lote_id = $1', [loteId]);
+            // Las lecturas que respaldan un certificado emitido se conservan
+            await client.query('DELETE FROM lecturas_suelo WHERE lote_id = $1 AND lectura_id NOT IN (SELECT lectura_id FROM reportes)', [loteId]);
         }
         const token = generarToken();
         await client.query(

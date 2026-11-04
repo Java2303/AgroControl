@@ -24,6 +24,23 @@ export interface Parcel {
   sensorUltimaLectura?: string | null
 }
 
+/** Certificado de suelo tal como lo devuelven POST /api/parcelas/:id/certificado y GET /api/certificados/:codigo */
+export interface CertificadoSuelo {
+  codigo: string
+  fechaEmision: string
+  emitidoPor: string | null
+  parcela: { nombre: string; ubicacion: string | null; areaHa: number; cultivo: string | null }
+  lote: { codigo: string; superficieHa: number }
+  rendimiento: { cantidad: number; unidad: string; fecha: string } | null
+  lectura: { fecha: string; humedad: number; temperatura: number; conductividad: number; ph: number; nitrogeno: number; fosforo: number; potasio: number }
+  origen: string
+  interpretacion: { ph: string; fosforo: string; potasio: string }
+  estados: Record<'humedad' | 'temperatura' | 'ph' | 'nitrogeno', SoilStatus>
+  calificacion: 'Óptimo' | 'Requiere atención' | 'Crítico'
+  diagnostico: string
+  recomendaciones: { regla: string; texto: string }[]
+}
+
 /** Lectura actual de un sensor tal como la entrega GET /api/sensores */
 export interface SensorReading {
   id: string

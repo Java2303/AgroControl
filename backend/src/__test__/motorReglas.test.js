@@ -25,6 +25,13 @@ describe('Pruebas Unitarias - Motor de Reglas (Recomendaciones agronómicas)', (
     expect(avisos.map(r => r.text).join(' ')).toMatch(/nitrógeno/);
   });
 
+  test('R-04: recomienda fertilización cuando el potasio está bajo según la tabla del CIAT', () => {
+    const recomendaciones = generarRecomendacionesReglas([
+      { parcelName: 'Lote D', humidity: 60, nitrogen: 120, ph: 6.8, phosphorus: 40, potassium: 70 }
+    ]);
+    expect(recomendaciones.some(r => /potásica/.test(r.text) && r.priority === 'warning')).toBe(true);
+  });
+
   test('Con valores óptimos debería devolver estado estable y nunca más de 3 sugerencias', () => {
     const recomendaciones = generarRecomendacionesReglas([
       { parcelName: 'Lote C', humidity: 60, nitrogen: 120, ph: 6.8 }
