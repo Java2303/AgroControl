@@ -286,68 +286,71 @@ export function ParcelsView() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  {/* Bitácora a todo el ancho y las acciones en una fila de iconos iguales: no se cortan en pantallas angostas */}
+                  <div className="space-y-2">
                     <Button
                       size="sm"
                       onClick={() => setParcelaBitacora(parcel)}
-                      className="flex-1 bg-[var(--tertiary-container)] text-[var(--tertiary)] hover:bg-[var(--tertiary)] hover:text-[var(--on-tertiary-fixed)] border-0 font-semibold"
+                      className="w-full bg-[var(--tertiary-container)] text-[var(--tertiary)] hover:bg-[var(--tertiary)] hover:text-[var(--on-tertiary-fixed)] border-0 font-semibold"
                     >
                       <span className="material-symbols-outlined text-base mr-1">history</span>
                       Bitácora
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => focusParcelOnMap(parcel.id)}
-                      className="bg-surface-high border-0 hover:bg-surface-container"
-                      aria-label="Ver en el mapa"
-                      title="Ver en el mapa"
-                    >
-                      <span className="material-symbols-outlined text-base">map</span>
-                    </Button>
-                    {puedeRegistrarLabores && (
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => emitirCertificado(parcel)}
-                        className="bg-surface-high border-0 hover:bg-surface-container"
-                        aria-label="Emitir certificado de suelo"
-                        title="Emitir certificado de suelo"
+                        onClick={() => focusParcelOnMap(parcel.id)}
+                        className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
+                        aria-label="Ver en el mapa"
+                        title="Ver en el mapa"
                       >
-                        <span className="material-symbols-outlined text-base">workspace_premium</span>
+                        <span className="material-symbols-outlined text-base">map</span>
                       </Button>
-                    )}
-                    {puedeRegistrarLabores && (
+                      {puedeRegistrarLabores && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => emitirCertificado(parcel)}
+                          className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
+                          aria-label="Emitir certificado de suelo"
+                          title="Emitir certificado de suelo"
+                        >
+                          <span className="material-symbols-outlined text-base">workspace_premium</span>
+                        </Button>
+                      )}
+                      {puedeRegistrarLabores && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => abrirSensor(parcel)}
+                          className={`flex-1 border-0 ${parcel.sensorMac ? 'bg-success-container text-[var(--success)] hover:bg-success-container/80' : 'bg-surface-high hover:bg-surface-container'}`}
+                          aria-label={parcel.sensorMac ? 'Sensor vinculado' : 'Vincular sensor'}
+                          title={parcel.sensorMac ? `Sensor ${parcel.sensorMac}` : 'Vincular sensor'}
+                        >
+                          <span className="material-symbols-outlined text-base">sensors</span>
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => abrirSensor(parcel)}
-                        className={`border-0 ${parcel.sensorMac ? 'bg-success-container text-[var(--success)] hover:bg-success-container/80' : 'bg-surface-high hover:bg-surface-container'}`}
-                        aria-label={parcel.sensorMac ? 'Sensor vinculado' : 'Vincular sensor'}
-                        title={parcel.sensorMac ? `Sensor ${parcel.sensorMac}` : 'Vincular sensor'}
+                        onClick={() => handleEditParcel(parcel)}
+                        className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
+                        aria-label="Editar parcela"
                       >
-                        <span className="material-symbols-outlined text-base">sensors</span>
+                        <span className="material-symbols-outlined text-base">edit</span>
                       </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditParcel(parcel)}
-                      className="bg-surface-high border-0 hover:bg-surface-container"
-                      aria-label="Editar parcela"
-                    >
-                      <span className="material-symbols-outlined text-base">edit</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => abrirBaja(parcel)}
-                      className="bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)]"
-                      aria-label="Dar de baja la parcela"
-                      title="Dar de baja"
-                    >
-                      <span className="material-symbols-outlined text-base">block</span>
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => abrirBaja(parcel)}
+                        className="flex-1 bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)]"
+                        aria-label="Dar de baja la parcela"
+                        title="Dar de baja"
+                      >
+                        <span className="material-symbols-outlined text-base">block</span>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
