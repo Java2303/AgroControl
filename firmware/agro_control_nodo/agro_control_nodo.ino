@@ -25,6 +25,8 @@
 #include <driver/gpio.h>
 #include <esp_rom_gpio.h>
 #include <soc/gpio_sig_map.h>
+#include <soc/gpio_periph.h>
+#include <soc/io_mux_reg.h>
 
 // ------------------------------------------------------------------ configuración
 // WIFI_SSID, WIFI_PASSWORD y DEVICE_TOKEN van en secretos.h (copia de secretos.ejemplo.h, fuera de git)
@@ -213,10 +215,13 @@ void setup() {
   if (MODO_EMULADOR) {
     Serial1.begin(9600, SERIAL_8N1, RX1_PIN, TX1_PIN);
     if (EMULADOR_SIN_CABLES) {
-      // Cada TX sigue saliendo por su pin y además se lee como RX del otro puerto: TX2 -> RX1 y TX1 -> RX2
-      gpio_set_direction((gpio_num_t)TX2_PIN, GPIO_MODE_INPUT_OUTPUT);
+      // Cada TX sigue saliendo por su pin y además se lee como RX del otro puerto: TX2 -> RX1 y TX1 -> RX2.
+      // Solo se habilita la entrada del pin (gpio_set_direction reemplazaría la salida de la UART por GPIO simple).
+      PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[TX2_PIN]);
+      PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[TX1_PIN]);
+      esp_rom_gpio_connect_out_signal(TX2_PIN, U2TXD_OUT_IDX, false, false);
+      esp_rom_gpio_connect_out_signal(TX1_PIN, U1TXD_OUT_IDX, false, false);
       esp_rom_gpio_connect_in_signal(TX2_PIN, U1RXD_IN_IDX, false);
-      gpio_set_direction((gpio_num_t)TX1_PIN, GPIO_MODE_INPUT_OUTPUT);
       esp_rom_gpio_connect_in_signal(TX1_PIN, U2RXD_IN_IDX, false);
     }
     randomSeed(esp_random());
@@ -224,6 +229,7 @@ void setup() {
   }
 
   WiFi.mode(WIFI_STA);
+  WiFi.STA.begin();                                    // enciende la radio para poder leer la MAC
   Serial.println("\n=== Agro Control - nodo IoT ===");
   Serial.printf("MAC del dispositivo: %s  (registrela en Parcelas > Sensor)\n", WiFi.macAddress().c_str());
   Serial.printf("Modo: %s\n", !MODO_EMULADOR ? "sensor 7 en 1 real por RS485"
