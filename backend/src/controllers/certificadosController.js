@@ -34,7 +34,7 @@ const emitirCertificado = async (req, res) => {
         const r = await db.query(
             `SELECT p.nombre, p.ubicacion_nombre, p.area_hectareas, tc.nombre AS cultivo,
                     l.lote_id, l.superficie_ha, l.dispositivo_mac, l.dispositivo_token_hash IS NOT NULL AS nodo_real,
-                    ls.lectura_id, ls.fecha_captura, ls.humedad_suelo, ls.temperatura_suelo, ls.conductividad_electrica,
+                    ls.lectura_id, ls.fecha_captura, ls.emulada, ls.humedad_suelo, ls.temperatura_suelo, ls.conductividad_electrica,
                     ls.ph, ls.nitrogeno, ls.fosforo, ls.potasio,
                     co.cantidad AS rendimiento, co.unidad AS rendimiento_unidad, co.fecha AS fecha_cosecha
              FROM parcelas p
@@ -70,7 +70,9 @@ const emitirCertificado = async (req, res) => {
             rendimiento: f.rendimiento != null ? { cantidad: Number(f.rendimiento), unidad: f.rendimiento_unidad, fecha: f.fecha_cosecha } : null,
             lectura: { fecha: f.fecha_captura, ...lectura },
             // RN-10: se declara el origen del dato; una lectura del simulador no se presenta como medición
-            origen: f.nodo_real ? `Nodo IoT ${f.dispositivo_mac}` : 'Lectura simulada (la parcela no tiene un nodo IoT vinculado)',
+            origen: !f.nodo_real ? 'Lectura simulada (la parcela no tiene un nodo IoT vinculado)'
+                : f.emulada ? `Nodo IoT ${f.dispositivo_mac} con valores emulados (sensor 7 en 1 no conectado)`
+                : `Nodo IoT ${f.dispositivo_mac}`,
             interpretacion: d.interpretacion,
             estados: d.estados,
             calificacion: d.calificacion,

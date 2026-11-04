@@ -41,6 +41,12 @@ describe('Pruebas Unitarias - Telemetría del nodo ESP32 (validarTelemetria)', (
     expect(validarTelemetria({ ...PAQUETE, timestamp: '1970-01-01T00:00:00Z' }, AHORA).datos.fecha.getTime()).toBe(AHORA);
   });
 
+  test('Marca la lectura como emulada solo si el nodo lo declara', () => {
+    expect(validarTelemetria({ ...PAQUETE, emulado: true }, AHORA).datos.emulada).toBe(true);
+    expect(validarTelemetria(PAQUETE, AHORA).datos.emulada).toBe(false);
+    expect(validarTelemetria({ ...PAQUETE, emulado: 'si' }, AHORA).datos.emulada).toBe(false);
+  });
+
   test('Normaliza la MAC con guiones o minúsculas', () => {
     expect(normalizarMac('aa-bb-cc-dd-ee-ff')).toBe('AA:BB:CC:DD:EE:FF');
     expect(normalizarMac('AABBCCDDEEFF')).toBeNull();

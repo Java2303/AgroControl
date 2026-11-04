@@ -64,7 +64,10 @@ const validarTelemetria = (body, ahora = Date.now()) => {
         if (Number.isFinite(t) && t <= ahora + ADELANTO_MAX_MS && t >= ahora - ANTIGUEDAD_MAX_MS) fecha = new Date(t);
     }
 
-    return { errores, datos: errores.length ? null : { mac, fecha, valores } };
+    // El nodo declara si los valores vienen de su emulador; ausente se toma como medición real
+    const emulada = b.emulado === true;
+
+    return { errores, datos: errores.length ? null : { mac, fecha, valores, emulada } };
 };
 
 module.exports = { RANGOS, normalizarMac, generarToken, hashToken, tokenValido, validarTelemetria };

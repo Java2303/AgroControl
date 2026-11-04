@@ -27,9 +27,9 @@ const recibirTelemetria = async (req, res) => {
         const loteId = r.rows[0].lote_id;
         const v = datos.valores;
         const ins = await db.query(
-            `INSERT INTO lecturas_suelo (lote_id, nitrogeno, fosforo, potasio, ph, humedad_suelo, temperatura_suelo, conductividad_electrica, fecha_captura)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING lectura_id, fecha_captura`,
-            [loteId, v.nitrogeno, v.fosforo, v.potasio, v.ph, v.humedad_suelo, v.temperatura_suelo, v.conductividad_electrica, datos.fecha]
+            `INSERT INTO lecturas_suelo (lote_id, nitrogeno, fosforo, potasio, ph, humedad_suelo, temperatura_suelo, conductividad_electrica, fecha_captura, emulada)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING lectura_id, fecha_captura`,
+            [loteId, v.nitrogeno, v.fosforo, v.potasio, v.ph, v.humedad_suelo, v.temperatura_suelo, v.conductividad_electrica, datos.fecha, datos.emulada]
         );
         await db.query('UPDATE lotes SET ultima_sincronizacion = CURRENT_TIMESTAMP WHERE lote_id = $1', [loteId]);
         res.status(201).json({ status: 'success', message: 'Lectura registrada.', data: ins.rows[0] });

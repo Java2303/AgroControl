@@ -38,7 +38,7 @@ const bool  MODO_EMULADOR = true;
 const bool  EMULADOR_SIN_CABLES = true;
 // true: la humedad del emulador sale de un sensor capacitivo de humedad de suelo v1.2 real
 // (VCC -> 3V3, GND -> GND, AOUT -> GPIO34). Los otros 6 valores siguen emulados.
-const bool  HUMEDAD_REAL = true;
+const bool  HUMEDAD_REAL = false;
 // Calibración: el monitor muestra la lectura cruda; anotar el valor con el sensor al aire (seco)
 // y sumergido en agua hasta la línea (húmedo) y reemplazarlos aquí.
 const int   CRUDO_SECO   = 2800;
@@ -185,9 +185,10 @@ void enviar(const Lectura& l) {
   String ts = horaIso();
   snprintf(json, sizeof(json),
     "{\"mac\":\"%s\",%s\"humedad\":%.1f,\"temperatura\":%.1f,\"conductividad\":%.0f,"
-    "\"ph\":%.1f,\"nitrogeno\":%.0f,\"fosforo\":%.0f,\"potasio\":%.0f}",
+    "\"ph\":%.1f,\"nitrogeno\":%.0f,\"fosforo\":%.0f,\"potasio\":%.0f,\"emulado\":%s}",
     WiFi.macAddress().c_str(), ts.length() ? ("\"timestamp\":\"" + ts + "\",").c_str() : "",
-    l.humedad, l.temperatura, l.conductividad, l.ph, l.nitrogeno, l.fosforo, l.potasio);
+    l.humedad, l.temperatura, l.conductividad, l.ph, l.nitrogeno, l.fosforo, l.potasio,
+    MODO_EMULADOR ? "true" : "false");                // la API marca la lectura para no presentarla como medición
   Serial.printf("JSON  > %s\n", json);
 
   WiFiClientSecure cliente;
