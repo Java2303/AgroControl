@@ -22,18 +22,31 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <time.h>
+#include <driver/gpio.h>
+#include <esp_rom_gpio.h>
+#include <soc/gpio_sig_map.h>
 
 // ------------------------------------------------------------------ configuración
-const char* WIFI_SSID     = "NOMBRE_DE_TU_WIFI";      // el ESP32 solo usa redes de 2,4 GHz
-const char* WIFI_PASSWORD = "CLAVE_DE_TU_WIFI";
+// WIFI_SSID, WIFI_PASSWORD y DEVICE_TOKEN van en secretos.h (copia de secretos.ejemplo.h, fuera de git)
+#include "secretos.h"
 const char* API_URL       = "https://agro-control-api.onrender.com/api/telemetria";
-const char* DEVICE_TOKEN  = "";                        // clave que muestra la web al vincular el sensor
 const bool  MODO_EMULADOR = true;
+// true: el emulador se conecta al maestro por dentro del chip (matriz de GPIO), sin cables.
+// Si el monitor muestra "el sensor no responde", ponerlo en false y usar los 2 cables de la cabecera.
+const bool  EMULADOR_SIN_CABLES = true;
+// true: la humedad del emulador sale de un sensor capacitivo de humedad de suelo v1.2 real
+// (VCC -> 3V3, GND -> GND, AOUT -> GPIO34). Los otros 6 valores siguen emulados.
+const bool  HUMEDAD_REAL = true;
+// Calibración: el monitor muestra la lectura cruda; anotar el valor con el sensor al aire (seco)
+// y sumergido en agua hasta la línea (húmedo) y reemplazarlos aquí.
+const int   CRUDO_SECO   = 2800;
+const int   CRUDO_HUMEDO = 1200;
 const unsigned long INTERVALO_MS = 20000;              // la web refresca cada 15 s
 
 // ------------------------------------------------------------------ pines
 const int RX2_PIN = 16, TX2_PIN = 17, DE_RE_PIN = 4;   // maestro Modbus (hacia el MAX485)
 const int RX1_PIN = 26, TX1_PIN = 27;                  // emulador del sensor
+const int HUMEDAD_PIN = 34;                            // entrada analógica del sensor capacitivo
 const uint8_t DIRECCION = 0x01;                        // dirección Modbus del sensor
 const uint16_t N_REGISTROS = 7;
 
@@ -109,6 +122,16 @@ void variarEmulados() {
   }
 }
 
+// Humedad volumétrica aproximada (0 a 100 %) a partir del sensor capacitivo: más agua, menor lectura
+uint16_t humedadCapacitivaX10() {
+  long suma = 0;
+  for (int i = 0; i < 16; i++) suma += analogRead(HUMEDAD_PIN);
+  int crudo = suma / 16;
+  Serial.printf("Humedad capacitiva: lectura cruda %d (seco %d, humedo %d)\n", crudo, CRUDO_SECO, CRUDO_HUMEDO);
+  long x10 = map(crudo, CRUDO_SECO, CRUDO_HUMEDO, 0, 1000);
+  return constrain(x10, 0, 1000);
+}
+
 void tareaEmulador(void*) {
   uint8_t t[8];
   size_t n = 0;
@@ -124,6 +147,7 @@ void tareaEmulador(void*) {
       uint16_t desde = (t[2] << 8) | t[3], cuantos = (t[4] << 8) | t[5];
       if (valida && desde + cuantos <= N_REGISTROS) {
         variarEmulados();
+        if (HUMEDAD_REAL) regsEmulados[0] = humedadCapacitivaX10();   // registro 0x0000: humedad ÷ 10
         uint8_t r[5 + 2 * N_REGISTROS];
         r[0] = DIRECCION; r[1] = 0x03; r[2] = 2 * cuantos;
         for (int i = 0; i < cuantos; i++) { r[3 + 2 * i] = regsEmulados[desde + i] >> 8; r[4 + 2 * i] = regsEmulados[desde + i] & 0xFF; }
@@ -188,6 +212,13 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, RX2_PIN, TX2_PIN);   // 9600 8N1, igual que el sensor
   if (MODO_EMULADOR) {
     Serial1.begin(9600, SERIAL_8N1, RX1_PIN, TX1_PIN);
+    if (EMULADOR_SIN_CABLES) {
+      // Cada TX sigue saliendo por su pin y además se lee como RX del otro puerto: TX2 -> RX1 y TX1 -> RX2
+      gpio_set_direction((gpio_num_t)TX2_PIN, GPIO_MODE_INPUT_OUTPUT);
+      esp_rom_gpio_connect_in_signal(TX2_PIN, U1RXD_IN_IDX, false);
+      gpio_set_direction((gpio_num_t)TX1_PIN, GPIO_MODE_INPUT_OUTPUT);
+      esp_rom_gpio_connect_in_signal(TX1_PIN, U2RXD_IN_IDX, false);
+    }
     randomSeed(esp_random());
     xTaskCreatePinnedToCore(tareaEmulador, "emulador", 4096, nullptr, 1, nullptr, 0);
   }
@@ -195,7 +226,10 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println("\n=== Agro Control - nodo IoT ===");
   Serial.printf("MAC del dispositivo: %s  (registrela en Parcelas > Sensor)\n", WiFi.macAddress().c_str());
-  Serial.printf("Modo: %s\n", MODO_EMULADOR ? "EMULADOR del sensor 7 en 1 (Modbus por GPIO17->26 y 27->16)" : "sensor 7 en 1 real por RS485");
+  Serial.printf("Modo: %s\n", !MODO_EMULADOR ? "sensor 7 en 1 real por RS485"
+                : EMULADOR_SIN_CABLES ? "EMULADOR del sensor 7 en 1 (Modbus interno, sin cables)"
+                : "EMULADOR del sensor 7 en 1 (Modbus por cables GPIO17->26 y 27->16)");
+  if (MODO_EMULADOR && HUMEDAD_REAL) Serial.println("Humedad: REAL, sensor capacitivo en GPIO34. Resto de variables: emuladas.");
   conectarWifi();
   configTime(0, 0, "pool.ntp.org", "time.google.com");  // hora UTC, como espera la API
 }

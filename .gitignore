@@ -29,3 +29,6 @@ next-env.d.ts
 # dependencias y reportes generados en subcarpetas (backend)
 node_modules/
 /coverage/
+
+# Credenciales del nodo ESP32
+firmware/**/secretos.h
