@@ -1,6 +1,6 @@
 const FUNCIONES = [
-  { icon: 'sensors', titulo: 'Monitoreo IoT continuo', texto: 'Humedad, temperatura, pH y NPK de cada lote.' },
-  { icon: 'satellite_alt', titulo: 'Parcelas georreferenciadas', texto: 'Trazado sobre mapa satelital con validación de 50 ha.' },
+  { icon: 'sensors', titulo: 'Monitoreo IoT Continuo', texto: 'Humedad, temperatura, pH y NPK de cada lote.' },
+  { icon: 'satellite_alt', titulo: 'Parcelas Georreferenciadas', texto: 'Trazado sobre mapa satelital con validación de 50 ha.' },
   { icon: 'rule', titulo: 'Recomendaciones del CIAT', texto: 'Motor de reglas con umbrales agronómicos verificables.' },
 ]
 

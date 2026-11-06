@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -73,7 +74,7 @@ function DetalleEventoSistema({ actividad }: { actividad: Actividad }) {
     ['Cultivo', d.cultivo],
     ['Superficie', d.area_ha !== undefined ? `${Number(d.area_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
     ['Ubicación', d.ubicacion],
-    ['Lote de monitoreo', d.lote_ha !== undefined ? `${Number(d.lote_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
+    ['Lote de Monitoreo', d.lote_ha !== undefined ? `${Number(d.lote_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
   ].filter(([, v]) => v)
   return (
     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
@@ -145,6 +146,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
       })
       setMostrarFormulario(false)
       setForm({ ...FORM_VACIO, fecha: hoyISO() })
+      toast.success('Labor Registrada')
       await cargar()
     } catch (e) {
       setErrorForm(e instanceof Error ? e.message : 'No se pudo registrar la labor.')
@@ -158,9 +160,11 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
       await apiFetch(`/actividades/${id}/anular`, { method: 'PATCH', body: JSON.stringify({ motivo }) })
       setAnulando(null)
       setMotivo('')
+      toast.success('Labor Anulada', { description: 'Queda en el historial marcada como anulada.' })
       await cargar()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo anular la labor.')
+      toast.error('No se Pudo Anular la Labor')
     }
   }
 
@@ -188,7 +192,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
         {parcel && (
           <>
             <SheetHeader className="bg-surface-lowest p-6 pb-5 shadow-ambient">
-              <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Bitácora de labores</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Bitácora de Labores</p>
               <SheetTitle className="text-headline text-on-surface flex items-center gap-2 pr-6">
                 <span className="w-3 h-3 flex-none rounded-full" style={{ backgroundColor: getCropColor(parcel.cropType) }} />
                 {parcel.name}
@@ -232,7 +236,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Ciclo actual</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Ciclo Actual</p>
                     {ciclo.tipo === 'en-cultivo' && (
                       <>
                         <p className="font-semibold text-on-surface">En cultivo · {ciclo.dias} {ciclo.dias === 1 ? 'día' : 'días'} desde la siembra</p>
@@ -251,7 +255,7 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                     )}
                     {ciclo.tipo === 'sin-siembra' && (
                       <>
-                        <p className="font-semibold text-on-surface">Sin siembra registrada</p>
+                        <p className="font-semibold text-on-surface">Sin Siembra Registrada</p>
                         <p className="text-sm text-on-surface-variant">Registre la siembra para seguir el ciclo del cultivo.</p>
                       </>
                     )}
@@ -268,13 +272,13 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                 mostrarFormulario ? (
                   <div className="rounded-xl bg-surface-lowest p-5 shadow-ambient space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold text-on-surface">Registrar labor</p>
-                      <button onClick={() => setMostrarFormulario(false)} className="text-on-surface-variant hover:text-on-surface" aria-label="Cerrar formulario">
+                      <p className="font-semibold text-on-surface">Registrar Labor</p>
+                      <button onClick={() => setMostrarFormulario(false)} className="text-on-surface-variant hover:text-on-surface" aria-label="Cerrar Formulario">
                         <span className="material-symbols-outlined">close</span>
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Tipo de labor">
+                    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Tipo de Labor">
                       {ORDEN_TIPOS.map((t) => {
                         const tt = TIPOS_ACTIVIDAD[t]
                         const activo = form.tipo === t
@@ -342,14 +346,14 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setMostrarFormulario(false)} className="bg-surface-high border-0">Cancelar</Button>
                       <Button onClick={guardar} disabled={guardando || !form.fecha} className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0">
-                        {guardando ? 'Guardando…' : 'Guardar en la bitácora'}
+                        {guardando ? 'Guardando…' : 'Guardar en la Bitácora'}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <Button onClick={() => setMostrarFormulario(true)} className="w-full h-12 rounded-xl bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0 font-semibold shadow-ambient">
                     <span className="material-symbols-outlined text-lg mr-2">add</span>
-                    Registrar labor
+                    Registrar Labor
                   </Button>
                 )
               ) : dadaDeBaja ? null : (
@@ -436,10 +440,10 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                                 {anulando === a.id && (
                                   <div className="mt-3 space-y-2 rounded-lg bg-error-container/60 p-3">
                                     <p className="text-xs text-on-surface">La labor no se elimina: queda en la bitácora marcada como anulada.</p>
-                                    <Input autoFocus placeholder="Motivo de la anulación" maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} className="bg-surface-lowest border-0 h-10" />
+                                    <Input autoFocus placeholder="Motivo de la Anulación" maxLength={300} value={motivo} onChange={(e) => setMotivo(e.target.value)} className="bg-surface-lowest border-0 h-10" />
                                     <div className="flex justify-end gap-2">
                                       <Button size="sm" variant="outline" onClick={() => setAnulando(null)} className="bg-surface-lowest border-0">Cancelar</Button>
-                                      <Button size="sm" onClick={() => confirmarAnulacion(a.id)} disabled={motivo.trim().length < 5} className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white border-0">Anular labor</Button>
+                                      <Button size="sm" onClick={() => confirmarAnulacion(a.id)} disabled={motivo.trim().length < 5} className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white border-0">Anular Labor</Button>
                                     </div>
                                   </div>
                                 )}

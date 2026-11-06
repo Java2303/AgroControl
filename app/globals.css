@@ -116,6 +116,8 @@
   --ring: #8dc63f;
 }
 
+/* Solo en pantalla: el certificado impreso siempre sale en claro */
+@media screen {
 .dark {
   --background: var(--primary);
   --surface: var(--primary);
@@ -143,6 +145,7 @@
   
   --sidebar: #00162f;
   --sidebar-border: rgba(141, 198, 63, 0.12);
+}
 }
 
 @theme inline {
@@ -241,6 +244,10 @@
     line-height: 1.1;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+  /* En el celular los títulos de página no ocupan media pantalla (los números de las tarjetas no cambian) */
+  @media (max-width: 767px) {
+    h1.text-display-md { font-size: 1.875rem; }
   }
   
   /* Headline */

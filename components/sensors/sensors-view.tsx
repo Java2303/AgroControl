@@ -121,12 +121,12 @@ export function SensorsView() {
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {tarjetasResumen.map((t) => (
           <Card key={t.label} className="bg-surface-lowest shadow-ambient border-0">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${t.fondo}`}>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <div className={`w-11 h-11 flex-none rounded-lg flex items-center justify-center ${t.fondo}`}>
                   <span className={`material-symbols-outlined ${t.texto}`}>{t.icon}</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   {loading ? <Skeleton className="w-10 h-8" /> : <p className={`text-display-md leading-none ${t.numero}`}>{t.value}</p>}
                   <p className="text-xs text-on-surface-variant font-medium mt-1">{t.label}</p>
                 </div>
@@ -139,7 +139,7 @@ export function SensorsView() {
       {/* Filtros: chips de parcela + tipo de sensor */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 flex-1">
-          {[{ parcelId: 'all', parcelName: 'Todas las parcelas', estado: null as SoilStatus | null }, ...grupos].map((g) => {
+          {[{ parcelId: 'all', parcelName: 'Todas las Parcelas', estado: null as SoilStatus | null }, ...grupos].map((g) => {
             const activa = parcelaSeleccionada === g.parcelId
             return (
               <button
@@ -159,10 +159,10 @@ export function SensorsView() {
         </div>
         <Select value={tipoSeleccionado} onValueChange={setTipoSeleccionado}>
           <SelectTrigger className="w-full lg:w-56 bg-surface-lowest shadow-ambient border-0 h-10 rounded-full">
-            <SelectValue placeholder="Filtrar por variable" />
+            <SelectValue placeholder="Filtrar por Variable" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas las variables</SelectItem>
+            <SelectItem value="all">Todas las Variables</SelectItem>
             {SENSOR_TYPES.map((tipo) => (
               <SelectItem key={tipo} value={tipo}>{SENSOR_THEME[tipo].label}</SelectItem>
             ))}

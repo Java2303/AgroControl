@@ -91,7 +91,8 @@ export function Navigation() {
       <nav className="surface-dark md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
         {/* 6 botones en 360–390 px: cada uno ocupa una fracción igual del ancho */}
         <div className="flex py-1.5 px-1">
-          {navItems.filter((item) => item.id !== 'settings').map((item) => (
+          {/* Sin «Salir»: cerrar sesión está dentro de Ajustes */}
+          {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}
@@ -106,13 +107,6 @@ export function Navigation() {
               <span className="text-[11px] font-medium truncate max-w-full">{item.shortLabel ?? item.label}</span>
             </button>
           ))}
-          <button
-            onClick={logout}
-            className="flex-1 min-w-0 flex flex-col items-center gap-0.5 px-0.5 py-2 rounded-xl text-[var(--on-primary)]/50 hover:text-[var(--error)] transition-smooth"
-          >
-            <span className="material-symbols-outlined text-xl">logout</span>
-            <span className="text-[11px] font-medium">Salir</span>
-          </button>
         </div>
       </nav>
     </>

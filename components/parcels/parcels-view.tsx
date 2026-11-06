@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useMemo, useState } from 'react'
 import { useApp } from '@/lib/app-context'
 import type { CertificadoSuelo, Parcel } from '@/lib/types'
@@ -21,6 +22,7 @@ import { ParcelShape } from '@/components/parcels/parcel-shape'
 import { ParcelHistory } from '@/components/parcels/parcel-history'
 import { CULTIVOS_CIAT_SANTA_CRUZ, getCropColor, getCropNameById } from '@/lib/crops'
 import { apiFetch } from '@/lib/api-client'
+import { WEB_URL } from '@/lib/api-config'
 import { useParcels } from '@/lib/hooks/use-parcels'
 import { useSensors } from '@/lib/hooks/use-sensors'
 import { STATUS_CHIP, STATUS_LABEL, estadosPorParcela } from '@/lib/sensor-theme'
@@ -76,6 +78,7 @@ export function ParcelsView() {
       setParcels(parcels.map((p) => (p.id === selectedParcel.id ? { ...p, name: editData.name, cropType: editData.cropType } : p)))
       setShowEditDialog(false)
       setSelectedParcel(null)
+      toast.success('Parcela Actualizada')
     } catch (err) {
       setAccionError(err instanceof Error ? err.message : 'No se pudo actualizar la parcela.')
     }
@@ -97,6 +100,7 @@ export function ParcelsView() {
       })
       setParcels(parcels.filter((p) => p.id !== parcelaBaja.id))
       setParcelaBaja(null)
+      toast.success('Parcela Dada de Baja', { description: `«${parcelaBaja.name}»: su historial se conserva.` })
     } catch (err) {
       setBaja((b) => ({ ...b, guardando: false, error: err instanceof Error ? err.message : 'No se pudo dar de baja la parcela.' }))
     }
@@ -108,6 +112,7 @@ export function ParcelsView() {
     try {
       const r = await apiFetch<{ data: CertificadoSuelo }>(`/parcelas/${parcel.id}/certificado`, { method: 'POST' })
       setCertificado({ parcela: parcel, cargando: false, error: null, cert: r.data })
+      toast.success('Certificado Emitido', { description: r.data.codigo })
     } catch (err) {
       setCertificado({ parcela: parcel, cargando: false, error: err instanceof Error ? err.message : 'No se pudo emitir el certificado.', cert: null })
     }
@@ -130,6 +135,7 @@ export function ParcelsView() {
       setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: r.data.mac, sensorUltimaLectura: null } : p)))
       setParcelaSensor({ ...parcelaSensor, sensorMac: r.data.mac, sensorUltimaLectura: null })
       setSensor((s) => ({ ...s, guardando: false, token: r.data.token, mac: r.data.mac }))
+      toast.success('Sensor Vinculado')
     } catch (err) {
       setSensor((s) => ({ ...s, guardando: false, error: err instanceof Error ? err.message : 'No se pudo vincular el sensor.' }))
     }
@@ -142,6 +148,7 @@ export function ParcelsView() {
       await apiFetch(`/parcelas/${parcelaSensor.id}/dispositivo`, { method: 'DELETE' })
       setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: null, sensorUltimaLectura: null } : p)))
       setParcelaSensor(null)
+      toast.success('Sensor Desvinculado')
     } catch (err) {
       setSensor((s) => ({ ...s, guardando: false, error: err instanceof Error ? err.message : 'No se pudo desvincular el sensor.' }))
     }
@@ -152,6 +159,7 @@ export function ParcelsView() {
     try {
       await navigator.clipboard.writeText(sensor.token)
       setSensor((s) => ({ ...s, copiado: true }))
+      toast.success('Clave Copiada')
     } catch {
       // Sin permiso de portapapeles: la clave sigue visible para copiarla a mano
     }
@@ -188,12 +196,12 @@ export function ParcelsView() {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {tarjetasResumen.map((t) => (
           <Card key={t.label} className="bg-surface-lowest shadow-ambient border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 flex-none rounded-xl flex items-center justify-center ${t.fondo}`}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className={`w-11 h-11 sm:w-12 sm:h-12 flex-none rounded-xl flex items-center justify-center ${t.fondo}`}>
                   <span className={`material-symbols-outlined text-2xl ${t.color}`}>{t.icon}</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   {loading ? <Skeleton className="w-12 h-9" /> : <p className="text-display-md text-on-surface leading-none">{t.value}</p>}
                   <p className="text-sm text-on-surface-variant font-medium mt-1">{t.label}</p>
                 </div>
@@ -217,10 +225,10 @@ export function ParcelsView() {
             </div>
             <Select value={filterCrop} onValueChange={setFilterCrop}>
               <SelectTrigger className="w-full md:w-56 bg-surface-high border-0 h-11 rounded-lg">
-                <SelectValue placeholder="Filtrar por cultivo" />
+                <SelectValue placeholder="Filtrar por Cultivo" />
               </SelectTrigger>
               <SelectContent className="max-h-60 overflow-y-auto">
-                <SelectItem value="all">Todos los cultivos</SelectItem>
+                <SelectItem value="all">Todos los Cultivos</SelectItem>
                 {CULTIVOS_CIAT_SANTA_CRUZ.map((c) => (
                   <SelectItem key={c.tipo_cultivo_id} value={c.tipo_cultivo_id.toString()}>
                     {c.nombre}
@@ -302,8 +310,8 @@ export function ParcelsView() {
                         size="sm"
                         onClick={() => focusParcelOnMap(parcel.id)}
                         className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
-                        aria-label="Ver en el mapa"
-                        title="Ver en el mapa"
+                        aria-label="Ver en el Mapa"
+                        title="Ver en el Mapa"
                       >
                         <span className="material-symbols-outlined text-base">map</span>
                       </Button>
@@ -313,8 +321,8 @@ export function ParcelsView() {
                           size="sm"
                           onClick={() => emitirCertificado(parcel)}
                           className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
-                          aria-label="Emitir certificado de suelo"
-                          title="Emitir certificado de suelo"
+                          aria-label="Emitir Certificado de Suelo"
+                          title="Emitir Certificado de Suelo"
                         >
                           <span className="material-symbols-outlined text-base">workspace_premium</span>
                         </Button>
@@ -325,8 +333,8 @@ export function ParcelsView() {
                           size="sm"
                           onClick={() => abrirSensor(parcel)}
                           className={`flex-1 border-0 ${parcel.sensorMac ? 'bg-success-container text-[var(--success)] hover:bg-success-container/80' : 'bg-surface-high hover:bg-surface-container'}`}
-                          aria-label={parcel.sensorMac ? 'Sensor vinculado' : 'Vincular sensor'}
-                          title={parcel.sensorMac ? `Sensor ${parcel.sensorMac}` : 'Vincular sensor'}
+                          aria-label={parcel.sensorMac ? 'Sensor Vinculado' : 'Vincular Sensor'}
+                          title={parcel.sensorMac ? `Sensor ${parcel.sensorMac}` : 'Vincular Sensor'}
                         >
                           <span className="material-symbols-outlined text-base">sensors</span>
                         </Button>
@@ -336,7 +344,7 @@ export function ParcelsView() {
                         size="sm"
                         onClick={() => handleEditParcel(parcel)}
                         className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
-                        aria-label="Editar parcela"
+                        aria-label="Editar Parcela"
                       >
                         <span className="material-symbols-outlined text-base">edit</span>
                       </Button>
@@ -345,8 +353,8 @@ export function ParcelsView() {
                         size="sm"
                         onClick={() => abrirBaja(parcel)}
                         className="flex-1 bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)]"
-                        aria-label="Dar de baja la parcela"
-                        title="Dar de baja"
+                        aria-label="Dar de Baja la Parcela"
+                        title="Dar de Baja"
                       >
                         <span className="material-symbols-outlined text-base">block</span>
                       </Button>
@@ -365,7 +373,7 @@ export function ParcelsView() {
                 <span className="material-symbols-outlined text-on-surface-variant text-4xl">landscape</span>
               </div>
               <h3 className="text-headline text-on-surface mb-2">
-                {searchTerm || filterCrop !== 'all' ? 'No se encontraron parcelas' : 'Sin parcelas registradas'}
+                {searchTerm || filterCrop !== 'all' ? 'No se encontraron parcelas' : 'Sin Parcelas Registradas'}
               </h3>
               <p className="text-on-surface-variant mb-6">
                 {searchTerm || filterCrop !== 'all' ? 'Intenta con otros filtros de búsqueda' : 'Comienza creando tu primera parcela en el mapa'}
@@ -412,7 +420,7 @@ export function ParcelsView() {
               <label className="text-sm font-semibold text-on-surface">Tipo de Cultivo</label>
               <Select value={editData.cropType} onValueChange={(value) => setEditData({ ...editData, cropType: value })}>
                 <SelectTrigger className="bg-surface-high border-0 h-11 rounded-lg">
-                  <SelectValue placeholder="Seleccione cultivo" />
+                  <SelectValue placeholder="Seleccione Cultivo" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-y-auto">
                   {CULTIVOS_CIAT_SANTA_CRUZ.map((c) => (
@@ -444,7 +452,7 @@ export function ParcelsView() {
       <Dialog open={!!certificado} onOpenChange={(abierto) => { if (!abierto) setCertificado(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
-            <DialogTitle className="text-headline text-on-surface">Certificado de suelo</DialogTitle>
+            <DialogTitle className="text-headline text-on-surface">Certificado de Suelo</DialogTitle>
             <DialogDescription className="text-on-surface-variant">
               «{certificado?.parcela.name}», con la última lectura del lote y la tabla de interpretación del CIAT.
             </DialogDescription>
@@ -455,7 +463,7 @@ export function ParcelsView() {
             <div className="space-y-3 py-2 text-sm text-on-surface">
               <div className="flex items-center justify-between gap-3 bg-surface-high rounded-lg p-3">
                 <div>
-                  <p className="text-xs text-on-surface-variant">Código de verificación</p>
+                  <p className="text-xs text-on-surface-variant">Código de Verificación</p>
                   <p className="font-mono font-bold">{certificado.cert.codigo}</p>
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-sm ${STATUS_CHIP[certificado.cert.calificacion === 'Óptimo' ? 'optimo' : certificado.cert.calificacion === 'Crítico' ? 'critico' : 'alerta']}`}>
@@ -470,13 +478,9 @@ export function ParcelsView() {
             <Button variant="outline" onClick={() => setCertificado(null)} className="bg-surface-high border-0">Cerrar</Button>
             {certificado?.cert && (
               <Button asChild className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0">
-                {/* En la app móvil se abre en la misma vista; en la web, en otra pestaña */}
-                <a
-                  href={`/verificar/?codigo=${certificado.cert.codigo}`}
-                  target={typeof window !== 'undefined' && window.location.origin === 'https://localhost' ? undefined : '_blank'}
-                  rel="noopener"
-                >
-                  <span className="material-symbols-outlined text-base mr-1">description</span>Ver e imprimir
+                {/* Siempre la web pública: el WebView de Android no imprime y Capacitor abre otro dominio en el navegador */}
+                <a href={`${WEB_URL}/verificar?codigo=${certificado.cert.codigo}`} target="_blank" rel="noopener">
+                  <span className="material-symbols-outlined text-base mr-1">description</span>Ver e Imprimir
                 </a>
               </Button>
             )}
@@ -488,7 +492,7 @@ export function ParcelsView() {
       <Dialog open={!!parcelaSensor} onOpenChange={(abierto) => { if (!abierto) setParcelaSensor(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
-            <DialogTitle className="text-headline text-on-surface">Sensor de la parcela</DialogTitle>
+            <DialogTitle className="text-headline text-on-surface">Sensor de la Parcela</DialogTitle>
             <DialogDescription className="text-on-surface-variant">
               Vincule el nodo ESP32 de «{parcelaSensor?.name}» con su dirección MAC. Desde entonces la parcela recibe lecturas reales
               y el simulador deja de escribir en ella.
@@ -547,7 +551,7 @@ export function ParcelsView() {
                   disabled={sensor.guardando || !sensor.mac.trim()}
                   className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0"
                 >
-                  {sensor.guardando ? 'Guardando…' : parcelaSensor?.sensorMac ? 'Generar nueva clave' : 'Vincular'}
+                  {sensor.guardando ? 'Guardando…' : parcelaSensor?.sensorMac ? 'Generar Nueva Clave' : 'Vincular'}
                 </Button>
               </>
             )}
@@ -559,7 +563,7 @@ export function ParcelsView() {
       <Dialog open={!!parcelaBaja} onOpenChange={(abierto) => { if (!abierto) setParcelaBaja(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
-            <DialogTitle className="text-headline text-on-surface">Dar de baja la parcela</DialogTitle>
+            <DialogTitle className="text-headline text-on-surface">Dar de Baja la Parcela</DialogTitle>
             <DialogDescription className="text-on-surface-variant">
               «{parcelaBaja?.name}» dejará de aparecer en el mapa, el tablero y el monitoreo. No se elimina: su bitácora y lecturas
               se conservan en la vista Historial.
@@ -570,7 +574,7 @@ export function ParcelsView() {
               <label className="text-sm font-semibold text-on-surface">Motivo</label>
               <Select value={baja.motivo || undefined} onValueChange={(v) => setBaja({ ...baja, motivo: v as MotivoBaja })}>
                 <SelectTrigger className="bg-surface-high border-0 h-11 rounded-lg w-full">
-                  <SelectValue placeholder="Seleccione el motivo" />
+                  <SelectValue placeholder="Seleccione el Motivo" />
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(MOTIVOS_BAJA) as [MotivoBaja, string][]).map(([valor, texto]) => (
@@ -601,7 +605,7 @@ export function ParcelsView() {
               disabled={!baja.motivo || baja.guardando || (baja.motivo === 'otro' && baja.observacion.trim().length < 5)}
               className="bg-[var(--error)] hover:bg-[var(--error)]/90 text-white border-0"
             >
-              {baja.guardando ? 'Dando de baja…' : 'Dar de baja'}
+              {baja.guardando ? 'Dando de baja…' : 'Dar de Baja'}
             </Button>
           </div>
         </DialogContent>

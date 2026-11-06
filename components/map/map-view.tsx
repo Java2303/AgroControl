@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { useApp } from '@/lib/app-context'
 import dynamic from 'next/dynamic'
@@ -135,6 +136,7 @@ export function MapView() {
       setNewParcelData({ name: '', cropType: '1', ubicacion_nombre: '' })
       setShowCreateDialog(false)
       setMode('view')
+      toast.success('Parcela Registrada', { description: `${area.toFixed(2)} ha` })
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         setCreateError('Tu rol no tiene permisos para registrar parcelas.')
@@ -164,45 +166,45 @@ export function MapView() {
 
       {/* Barra de herramientas responsiva */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
-        <CardContent className="p-4 grid grid-cols-2 gap-3 md:flex md:flex-wrap md:items-center">
+        <CardContent className="p-3 sm:p-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:flex md:flex-wrap md:items-center">
           <Button
             variant={mode === 'view' ? 'default' : 'outline'} size="sm" onClick={() => setMode('view')}
-            className={mode === 'view' ? 'bg-[var(--primary)] text-[var(--on-primary)] border-0 w-full md:w-auto' : 'bg-surface-high border-0 w-full md:w-auto'}
+            className={mode === 'view' ? 'bg-[var(--primary)] text-[var(--on-primary)] border-0 w-full md:w-auto h-11 justify-start gap-2 px-3' : 'bg-surface-high border-0 w-full md:w-auto h-11 justify-start gap-2 px-3'}
           >
-            <span className="material-symbols-outlined text-lg mr-1">pan_tool</span> Ver Mapa
+            <span className="material-symbols-outlined text-xl">pan_tool</span> Ver Mapa
           </Button>
           
           <Button
             variant={mode === 'polygon' ? 'default' : 'outline'} size="sm" onClick={() => setMode('polygon')}
-            className={mode === 'polygon' ? 'bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] border-0 w-full md:w-auto' : 'bg-surface-high border-0 w-full md:w-auto'}
+            className={mode === 'polygon' ? 'bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] border-0 w-full md:w-auto h-11 justify-start gap-2 px-3' : 'bg-surface-high border-0 w-full md:w-auto h-11 justify-start gap-2 px-3'}
           >
-            <span className="material-symbols-outlined text-lg mr-1">polyline</span> Dibujar Parcela
+            <span className="material-symbols-outlined text-xl">polyline</span><span className="truncate"><span className="sm:hidden">Dibujar</span><span className="hidden sm:inline">Dibujar Parcela</span></span>
           </Button>
 
           <Button
             variant={mode === 'marker' ? 'default' : 'outline'} size="sm" onClick={() => setMode('marker')}
-            className={mode === 'marker' ? 'bg-[var(--warning)] text-white border-0 w-full md:w-auto' : 'bg-surface-high border-0 w-full md:w-auto'}
+            className={mode === 'marker' ? 'bg-[var(--warning)] text-white border-0 w-full md:w-auto h-11 justify-start gap-2 px-3' : 'bg-surface-high border-0 w-full md:w-auto h-11 justify-start gap-2 px-3'}
           >
-            <span className="material-symbols-outlined text-lg mr-1">location_on</span> Punto Referencia
+            <span className="material-symbols-outlined text-xl">location_on</span><span className="truncate"><span className="sm:hidden">Punto</span><span className="hidden sm:inline">Punto Referencia</span></span>
           </Button>
           
-          <Button variant="outline" size="sm" onClick={() => { setCurrentPoints([]); setMarkers([]); }} className="bg-surface-high border-0 w-full md:w-auto">
-            <span className="material-symbols-outlined text-lg mr-1">delete</span> Limpiar Todo
+          <Button variant="outline" size="sm" onClick={() => { setCurrentPoints([]); setMarkers([]); }} className="bg-surface-high border-0 w-full md:w-auto h-11 justify-start gap-2 px-3">
+            <span className="material-symbols-outlined text-xl">delete</span><span className="truncate"><span className="sm:hidden">Limpiar</span><span className="hidden sm:inline">Limpiar Todo</span></span>
           </Button>
 
           {currentPoints.length >= 3 && (
             <Button
               size="sm" onClick={() => setShowCreateDialog(true)}
-              className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] border-0 col-span-2 md:ml-auto md:w-auto"
+              className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] border-0 col-span-2 h-11 gap-2 md:ml-auto md:w-auto"
             >
-              <span className="material-symbols-outlined text-lg mr-1">check</span> Guardar Parcela
+              <span className="material-symbols-outlined text-xl">check</span> Guardar Parcela
             </Button>
           )}
         </CardContent>
       </Card>
 
       {/* Contenedor del Mapa */}
-      <Card className="bg-surface-lowest shadow-ambient border-0 overflow-hidden relative">
+      <Card className="bg-surface-lowest shadow-ambient border-0 overflow-hidden relative isolate">
         <MapComponent 
           mode={mode} 
           currentPoints={currentPoints} 
@@ -253,7 +255,7 @@ export function MapView() {
               <Field>
                 <FieldLabel>Tipo de Cultivo</FieldLabel>
                 <Select value={newParcelData.cropType} onValueChange={(val) => setNewParcelData({ ...newParcelData, cropType: val })}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione cultivo" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccione Cultivo" /></SelectTrigger>
                   <SelectContent className="z-[10005] max-h-60 overflow-y-auto">
                     {cultivos.map((c) => (
                       <SelectItem key={c.tipo_cultivo_id} value={c.tipo_cultivo_id.toString()}>{c.nombre}</SelectItem>

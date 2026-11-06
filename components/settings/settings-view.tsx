@@ -1,7 +1,8 @@
 'use client'
+import { toast } from 'sonner'
 import { ROL_LABEL } from '@/lib/types'
 
-import { useState } from 'react'
+import { useTheme } from 'next-themes'
 import { useApp } from '@/lib/app-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,13 +12,7 @@ import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 
 export function SettingsView() {
   const { state, logout } = useApp()
-  const [settings, setSettings] = useState({
-    notifications: true,
-    emailAlerts: true,
-    darkMode: false,
-    autoRefresh: true,
-    refreshInterval: 30,
-  })
+  const { resolvedTheme, setTheme } = useTheme()
 
   const handleExportData = () => {
     const data = {
@@ -32,13 +27,7 @@ export function SettingsView() {
     linkElement.setAttribute('href', dataUri)
     linkElement.setAttribute('download', 'agro-control-backup.json')
     linkElement.click()
-  }
-
-  const handleClearData = () => {
-    if (confirm('¿Estás seguro de que deseas eliminar todos los datos? Esta acción no se puede deshacer.')) {
-      localStorage.clear()
-      logout()
-    }
+    toast.success('Datos Exportados')
   }
 
   return (
@@ -87,39 +76,6 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Notifications - No dividers, use spacing */}
-      <Card className="bg-surface-lowest shadow-ambient border-0">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-headline text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-[var(--tertiary)]">notifications</span>
-            Notificaciones
-          </CardTitle>
-          <CardDescription className="text-on-surface-variant mt-1">Configura cómo recibir alertas</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-surface-low">
-            <div className="space-y-0.5">
-              <p className="font-semibold text-on-surface">Notificaciones Push</p>
-              <p className="text-sm text-on-surface-variant">Recibe alertas en tu dispositivo</p>
-            </div>
-            <Switch
-              checked={settings.notifications}
-              onCheckedChange={(checked) => setSettings({ ...settings, notifications: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between p-4 rounded-lg bg-surface-low">
-            <div className="space-y-0.5">
-              <p className="font-semibold text-on-surface">Alertas por Email</p>
-              <p className="text-sm text-on-surface-variant">Recibe resúmenes diarios por correo</p>
-            </div>
-            <Switch
-              checked={settings.emailAlerts}
-              onCheckedChange={(checked) => setSettings({ ...settings, emailAlerts: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Display */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardHeader className="pb-4">
@@ -133,21 +89,11 @@ export function SettingsView() {
           <div className="flex items-center justify-between p-4 rounded-lg bg-surface-low">
             <div className="space-y-0.5">
               <p className="font-semibold text-on-surface">Modo Oscuro</p>
-              <p className="text-sm text-on-surface-variant">Cambia el tema de la aplicación</p>
+              <p className="text-sm text-on-surface-variant">Colores oscuros para trabajar de noche</p>
             </div>
             <Switch
-              checked={settings.darkMode}
-              onCheckedChange={(checked) => setSettings({ ...settings, darkMode: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between p-4 rounded-lg bg-surface-low">
-            <div className="space-y-0.5">
-              <p className="font-semibold text-on-surface">Actualización Automática</p>
-              <p className="text-sm text-on-surface-variant">Actualizar datos de sensores automáticamente</p>
-            </div>
-            <Switch
-              checked={settings.autoRefresh}
-              onCheckedChange={(checked) => setSettings({ ...settings, autoRefresh: checked })}
+              checked={resolvedTheme === 'dark'}
+              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
             />
           </div>
         </CardContent>
@@ -160,21 +106,13 @@ export function SettingsView() {
             <span className="material-symbols-outlined text-[var(--tertiary)]">database</span>
             Gestión de Datos
           </CardTitle>
-          <CardDescription className="text-on-surface-variant mt-1">Exporta o elimina tus datos</CardDescription>
+          <CardDescription className="text-on-surface-variant mt-1">Descarga una copia de tus parcelas en formato JSON</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <Button onClick={handleExportData} variant="outline" className="flex-1 bg-surface-high border-0 h-11 rounded-lg hover:bg-surface-container">
+          <div className="flex">
+            <Button onClick={handleExportData} variant="outline" className="w-full md:w-auto md:px-6 bg-surface-high border-0 h-11 rounded-lg hover:bg-surface-container">
               <span className="material-symbols-outlined text-lg mr-2">download</span>
               Exportar Datos
-            </Button>
-            <Button
-              onClick={handleClearData}
-              variant="outline"
-              className="flex-1 bg-surface-high border-0 h-11 rounded-lg text-[var(--error)] hover:bg-error-container"
-            >
-              <span className="material-symbols-outlined text-lg mr-2">delete_forever</span>
-              Eliminar Todos los Datos
             </Button>
           </div>
         </CardContent>

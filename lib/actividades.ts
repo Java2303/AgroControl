@@ -42,17 +42,17 @@ interface TemaActividad {
 }
 
 export const TIPOS_ACTIVIDAD: Record<TipoActividad, TemaActividad> = {
-  siembra:       { label: 'Siembra',        icon: 'psychiatry',   color: '#2b8412', soft: '#e9f5e4', producto: 'Variedad o semilla',   unidad: 'kg/ha', cantidad: 'Densidad de siembra' },
+  siembra:       { label: 'Siembra',        icon: 'psychiatry',   color: '#2b8412', soft: '#e9f5e4', producto: 'Variedad o Semilla',   unidad: 'kg/ha', cantidad: 'Densidad de Siembra' },
   fertilizacion: { label: 'Fertilización',  icon: 'compost',      color: '#0b7285', soft: '#e0f1f4', producto: 'Fertilizante',          unidad: 'kg/ha', cantidad: 'Dosis' },
   encalado:      { label: 'Encalado',       icon: 'layers',       color: '#6741d9', soft: '#eee9fb', producto: 'Enmienda',              unidad: 't/ha',  cantidad: 'Dosis' },
-  riego:         { label: 'Riego',          icon: 'water_drop',   color: '#005293', soft: '#e3eef8', producto: null,                    unidad: 'mm',    cantidad: 'Lámina aplicada' },
-  fitosanitario: { label: 'Control fitosanitario', icon: 'pest_control', color: '#d9480f', soft: '#fdebe1', producto: 'Producto aplicado', unidad: 'L/ha', cantidad: 'Dosis' },
-  muestreo:      { label: 'Muestreo de suelo', icon: 'labs',      color: '#46607a', soft: '#e6edf3', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
+  riego:         { label: 'Riego',          icon: 'water_drop',   color: '#005293', soft: '#e3eef8', producto: null,                    unidad: 'mm',    cantidad: 'Lámina Aplicada' },
+  fitosanitario: { label: 'Control Fitosanitario', icon: 'pest_control', color: '#d9480f', soft: '#fdebe1', producto: 'Producto Aplicado', unidad: 'L/ha', cantidad: 'Dosis' },
+  muestreo:      { label: 'Muestreo de Suelo', icon: 'labs',      color: '#46607a', soft: '#e6edf3', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
   cosecha:       { label: 'Cosecha',        icon: 'agriculture',  color: '#b35c00', soft: '#fff1e0', producto: null,                    unidad: 't/ha',  cantidad: 'Rendimiento' },
-  otra:          { label: 'Otra labor',     icon: 'more_horiz',   color: '#495057', soft: '#eef0f2', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
-  registro_parcela: { label: 'Parcela registrada', icon: 'add_location_alt', color: '#002147', soft: '#e3eef8', producto: null, unidad: null, cantidad: 'Cantidad' },
-  edicion_parcela:  { label: 'Parcela editada',    icon: 'edit_note',        color: '#46607a', soft: '#e6edf3', producto: null, unidad: null, cantidad: 'Cantidad' },
-  baja_parcela:     { label: 'Parcela dada de baja', icon: 'block',          color: '#c92a2a', soft: '#fee2e2', producto: null, unidad: null, cantidad: 'Cantidad' },
+  otra:          { label: 'Otra Labor',     icon: 'more_horiz',   color: '#495057', soft: '#eef0f2', producto: null,                    unidad: null,    cantidad: 'Cantidad' },
+  registro_parcela: { label: 'Parcela Registrada', icon: 'add_location_alt', color: '#002147', soft: '#e3eef8', producto: null, unidad: null, cantidad: 'Cantidad' },
+  edicion_parcela:  { label: 'Parcela Editada',    icon: 'edit_note',        color: '#46607a', soft: '#e6edf3', producto: null, unidad: null, cantidad: 'Cantidad' },
+  baja_parcela:     { label: 'Parcela Dada de Baja', icon: 'block',          color: '#c92a2a', soft: '#fee2e2', producto: null, unidad: null, cantidad: 'Cantidad' },
 }
 
 /** Tipos que se ofrecen en el formulario (las labores manuales) */

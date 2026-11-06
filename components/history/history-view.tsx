@@ -63,10 +63,10 @@ export function HistoryView() {
 
   const activas = lista.filter((p) => p.activa).length
   const resumen = [
-    { label: 'Parcelas en el historial', value: lista.length, icon: 'inventory_2', fondo: 'bg-[#e3eef8]', color: 'text-[var(--primary-container)]' },
+    { label: 'Parcelas en el Historial', value: lista.length, icon: 'inventory_2', fondo: 'bg-[#e3eef8]', color: 'text-[var(--primary-container)]' },
     { label: 'Activas', value: activas, icon: 'check_circle', fondo: 'bg-success-container', color: 'text-[var(--success)]' },
-    { label: 'Dadas de baja', value: lista.length - activas, icon: 'block', fondo: 'bg-error-container', color: 'text-[var(--error)]' },
-    { label: 'Labores registradas', value: lista.reduce((s, p) => s + p.labores, 0), icon: 'history', fondo: 'bg-[#e0f1f4]', color: 'text-[#0b7285]' },
+    { label: 'Dadas de Baja', value: lista.length - activas, icon: 'block', fondo: 'bg-error-container', color: 'text-[var(--error)]' },
+    { label: 'Labores Registradas', value: lista.reduce((s, p) => s + p.labores, 0), icon: 'history', fondo: 'bg-[#e0f1f4]', color: 'text-[#0b7285]' },
   ]
 
   const parcelaPanel: ParcelaConHistorial | null = abierta && {
@@ -89,7 +89,7 @@ export function HistoryView() {
     <div className="space-y-8">
       <header className="pt-4">
         <p className="text-on-surface-variant text-sm font-medium uppercase tracking-wider mb-2">Trazabilidad</p>
-        <h1 className="text-display-md text-on-surface">{esAdmin ? 'Historial del CIAT' : 'Historial de parcelas'}</h1>
+        <h1 className="text-display-md text-on-surface">{esAdmin ? 'Historial del CIAT' : 'Historial de Parcelas'}</h1>
         <p className="text-on-surface-variant mt-2">
           {esAdmin
             ? 'Todas las parcelas de la institución, activas y dadas de baja, con su bitácora completa.'
@@ -115,7 +115,7 @@ export function HistoryView() {
 
       <div className="flex flex-col md:flex-row md:items-center gap-3">
         <div className="flex gap-2">
-          {([['todas', 'Todas'], ['activas', 'Activas'], ['baja', 'Dadas de baja']] as [Filtro, string][]).map(([valor, texto]) => (
+          {([['todas', 'Todas'], ['activas', 'Activas'], ['baja', 'Dadas de Baja']] as [Filtro, string][]).map(([valor, texto]) => (
             <button
               key={valor}
               onClick={() => setFiltro(valor)}
@@ -164,7 +164,7 @@ export function HistoryView() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className={`font-semibold text-on-surface ${p.activa ? '' : 'text-on-surface-variant'}`}>{p.nombre}</p>
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded-sm ${p.activa ? 'bg-[var(--tertiary-container)] text-[var(--tertiary)]' : 'bg-error-container text-[var(--error)]'}`}>
-                      {p.activa ? 'Activa' : 'Dada de baja'}
+                      {p.activa ? 'Activa' : 'Dada de Baja'}
                     </span>
                   </div>
                   <p className="text-sm text-on-surface-variant truncate">
@@ -184,7 +184,7 @@ export function HistoryView() {
                 <div className="text-left sm:text-right">
                   <p className="text-sm font-semibold text-on-surface">{p.labores} {p.labores === 1 ? 'labor' : 'labores'}</p>
                   <p className="text-xs text-on-surface-variant">
-                    {p.ultimaLabor ? `Última: ${fechaLocal(p.ultimaLabor).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Sin labores'}
+                    {p.ultimaLabor ? `Última: ${fechaLocal(p.ultimaLabor).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Sin Labores'}
                   </p>
                 </div>
                 <Button

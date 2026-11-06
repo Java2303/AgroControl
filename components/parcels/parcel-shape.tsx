@@ -31,7 +31,7 @@ export function ParcelShape({ coordinates, color, className }: ParcelShapeProps)
   }
 
   return (
-    <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} className={className} role="img" aria-label="Forma de la parcela">
+    <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} className={className} role="img" aria-label="Forma de la Parcela">
       <defs>
         <pattern id={patternId} width="12" height="12" patternUnits="userSpaceOnUse">
           <path d="M12 0H0V12" fill="none" stroke="var(--outline)" strokeWidth="0.6" />

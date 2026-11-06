@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Manrope, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const manrope = Manrope({ 
@@ -25,6 +27,7 @@ export const viewport: Viewport = {
   themeColor: '#002147',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -33,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${manrope.variable} ${inter.variable}`}>
+    <html lang="es" className={`${manrope.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         <link 
           rel="stylesheet" 
@@ -41,7 +44,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-background">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="agro-control-tema">
+          {children}
+          {/* Avisos de éxito (✓) y error (✗); bajo la barra de estado en la app Android */}
+          <Toaster position="top-center" richColors closeButton offset="calc(env(safe-area-inset-top) + 16px)" />
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
