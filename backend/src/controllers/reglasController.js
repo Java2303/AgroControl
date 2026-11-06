@@ -8,6 +8,8 @@ const { generarRecomendacionesReglas } = require('../services/motorReglas');
 const obtenerRecomendaciones = async (req, res) => {
   try {
     const usuario_id = req.usuario.id;
+    // El administrador del CIAT supervisa todas las parcelas (Cuadro 3.36); los demás roles ven solo las suyas
+    const esAdmin = req.usuario.rol === 'admin_ciat';
 
     const query = `
       SELECT
@@ -26,10 +28,10 @@ const obtenerRecomendaciones = async (req, res) => {
         ORDER BY fecha_captura DESC
         LIMIT 1
       ) ls ON true
-      WHERE p.usuario_id = $1 AND p.activa;
+      WHERE (p.usuario_id = $1 OR $2) AND p.activa;
     `;
 
-    const result = await db.query(query, [usuario_id]);
+    const result = await db.query(query, [usuario_id, esAdmin]);
 
     res.status(200).json({
       status: 'success',

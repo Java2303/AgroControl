@@ -38,6 +38,8 @@ const sensoresController = {
   obtenerLecturas: async (req, res) => {
     try {
       const usuario_id = req.usuario.id;
+      // El administrador del CIAT supervisa todas las parcelas (Cuadro 3.36); los demás roles ven solo las suyas
+      const esAdmin = req.usuario.rol === 'admin_ciat';
 
       // 1. Obtener la última lectura de cada parcela/lote
       const queryUltimas = `
@@ -61,11 +63,11 @@ const sensoresController = {
           ORDER BY fecha_captura DESC 
           LIMIT 1
         ) ls ON true
-        WHERE p.usuario_id = $1 AND p.activa
+        WHERE (p.usuario_id = $1 OR $2) AND p.activa
         ORDER BY p.nombre ASC;
       `;
 
-      const resUltimas = await db.query(queryUltimas, [usuario_id]);
+      const resUltimas = await db.query(queryUltimas, [usuario_id, esAdmin]);
 
       // 2. Obtener el historial de las últimas 10 lecturas de cada lote
       const queryHistorial = `
@@ -83,11 +85,11 @@ const sensoresController = {
           FROM lecturas_suelo
         ) ls ON l.lote_id = ls.lote_id AND ls.rn <= 10
         JOIN parcelas p ON l.parcela_id = p.parcela_id
-        WHERE p.usuario_id = $1 AND p.activa
+        WHERE (p.usuario_id = $1 OR $2) AND p.activa
         ORDER BY ls.fecha_captura ASC;
       `;
 
-      const resHistorial = await db.query(queryHistorial, [usuario_id]);
+      const resHistorial = await db.query(queryHistorial, [usuario_id, esAdmin]);
 
       // Agrupar historial por parcela
       const historialPorParcela = {};

@@ -46,6 +46,8 @@ export function ParcelsView() {
   const [sensor, setSensor] = useState<{ mac: string; guardando: boolean; error: string | null; token: string | null; copiado: boolean }>({ mac: '', guardando: false, error: null, token: null, copiado: false })
   // Matriz de permisos (Cuadro 3.36): el productor solo consulta (parcelas, sensores, bitácora y certificados)
   const puedeRegistrarLabores = state.user?.userType !== 'productor'
+  // El administrador ve todas las parcelas del CIAT, pero solo gestiona las propias (solo el dueño escribe en su bitácora)
+  const puedeGestionar = (p: Parcel) => puedeRegistrarLabores && p.propia !== false
 
   // El estado del suelo se deriva de las lecturas actuales de cada parcela
   const estados = useMemo(() => estadosPorParcela(readings), [readings])
@@ -281,6 +283,12 @@ export function ParcelsView() {
                       <span className="material-symbols-outlined text-base">location_on</span>
                       {parcel.ubicacion_nombre || 'Ubicación no registrada'}
                     </p>
+                    {parcel.propia === false && parcel.responsable && (
+                      <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
+                        <span className="material-symbols-outlined text-sm">person</span>
+                        Responsable: {parcel.responsable}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -298,7 +306,7 @@ export function ParcelsView() {
 
                   {/* Bitácora a todo el ancho y las acciones en una fila de iconos iguales: no se cortan en pantallas angostas */}
                   {/* El productor solo tiene Bitácora y Mapa: van lado a lado y a mitades iguales */}
-                  <div className={puedeRegistrarLabores ? 'space-y-2' : 'grid grid-cols-2 gap-2'}>
+                  <div className={puedeGestionar(parcel) ? 'space-y-2' : 'grid grid-cols-2 gap-2'}>
                     <Button
                       size="sm"
                       onClick={() => setParcelaBitacora(parcel)}
@@ -317,9 +325,9 @@ export function ParcelsView() {
                         title="Ver en el Mapa"
                       >
                         <span className="material-symbols-outlined text-base">map</span>
-                        {!puedeRegistrarLabores && <span className="ml-1">Mapa</span>}
+                        {!puedeGestionar(parcel) && <span className="ml-1">Mapa</span>}
                       </Button>
-                      {puedeRegistrarLabores && (
+                      {puedeGestionar(parcel) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -331,7 +339,7 @@ export function ParcelsView() {
                           <span className="material-symbols-outlined text-base">workspace_premium</span>
                         </Button>
                       )}
-                      {puedeRegistrarLabores && (
+                      {puedeGestionar(parcel) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -343,7 +351,7 @@ export function ParcelsView() {
                           <span className="material-symbols-outlined text-base">sensors</span>
                         </Button>
                       )}
-                      {puedeRegistrarLabores && (
+                      {puedeGestionar(parcel) && (
                         <>
                       <Button
                         variant="outline"
@@ -403,7 +411,7 @@ export function ParcelsView() {
       <ParcelHistory
         parcel={parcelaBitacora}
         onOpenChange={(abierto) => { if (!abierto) setParcelaBitacora(null) }}
-        puedeRegistrar={puedeRegistrarLabores}
+        puedeRegistrar={!!parcelaBitacora && puedeGestionar(parcelaBitacora)}
       />
 
       {/* Editar */}

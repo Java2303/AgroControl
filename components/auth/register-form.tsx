@@ -285,7 +285,7 @@ export function RegisterForm() {
                       >
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-lg">agriculture</span>
-                          Productor Agrícola
+                          Productor Asociado (Convenio CIAT)
                         </div>
                       </SelectItem>
                       <SelectItem 

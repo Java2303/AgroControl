@@ -22,6 +22,9 @@ export interface Parcel {
   /** MAC del nodo ESP32 vinculado; null si la parcela usa el simulador */
   sensorMac?: string | null
   sensorUltimaLectura?: string | null
+  /** false si la parcela es de otro usuario (el administrador del CIAT ve todas) */
+  propia?: boolean
+  responsable?: string
 }
 
 /** Certificado de suelo tal como lo devuelven POST /api/parcelas/:id/certificado y GET /api/certificados/:codigo */
@@ -92,7 +95,7 @@ export type ViewType = 'login' | 'register' | 'dashboard' | 'map' | 'parcels' | 
 /** Nombre visible de cada rol */
 export const ROL_LABEL: Record<User['userType'], string> = {
   agronomo: 'Ingeniero Agrónomo',
-  productor: 'Productor',
+  productor: 'Productor Asociado',
   admin_ciat: 'Administrador CIAT',
 }
 

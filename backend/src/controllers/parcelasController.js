@@ -116,6 +116,8 @@ const obtenerParcelas = async (req, res) => {
     try {
         // Extraemos el ID del usuario que el authMiddleware inyectó en la petición
         const usuario_id = req.usuario.id;
+        // El administrador del CIAT supervisa todas las parcelas (Cuadro 3.36); los demás roles ven solo las suyas
+        const esAdmin = req.usuario.rol === 'admin_ciat';
 
         const queryText = `
             SELECT 
@@ -127,18 +129,20 @@ const obtenerParcelas = async (req, res) => {
                 fecha_creacion AS "createdAt",
                 ST_AsGeoJSON(geom) AS geom,
                 l.dispositivo_mac AS "sensorMac",
-                l.ultima_sincronizacion AS "sensorUltimaLectura"
+                l.ultima_sincronizacion AS "sensorUltimaLectura",
+                (parcelas.usuario_id = $1) AS propia,
+                (SELECT nombre_completo FROM usuarios u WHERE u.usuario_id = parcelas.usuario_id) AS responsable
             FROM parcelas
             LEFT JOIN LATERAL (
                 SELECT dispositivo_mac, ultima_sincronizacion FROM lotes
                 WHERE lotes.parcela_id = parcelas.parcela_id AND dispositivo_token_hash IS NOT NULL
                 LIMIT 1
             ) l ON true
-            WHERE usuario_id = $1 AND activa
+            WHERE (usuario_id = $1 OR $2) AND activa
             ORDER BY nombre ASC;
         `;
 
-        const result = await db.query(queryText, [usuario_id]);
+        const result = await db.query(queryText, [usuario_id, esAdmin]);
 
         res.status(200).json({
             status: 'success',
