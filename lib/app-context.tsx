@@ -12,6 +12,7 @@ type Action =
   | { type: 'SET_SENSORS'; payload: Sensor[] }
   | { type: 'LOAD_SESSION'; payload: { user: User } }
   | { type: 'FOCUS_PARCEL_ON_MAP'; payload: string | null }
+  | { type: 'UPDATE_USER'; payload: Partial<User> }
 
 const initialState: AppState = {
   currentView: 'login',
@@ -52,6 +53,8 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, sensors: action.payload }
     case 'FOCUS_PARCEL_ON_MAP':
       return { ...state, mapFocusId: action.payload, currentView: action.payload ? 'map' : state.currentView }
+    case 'UPDATE_USER':
+      return state.user ? { ...state, user: { ...state.user, ...action.payload } } : state
     case 'LOAD_SESSION':
       return { 
         ...state, 

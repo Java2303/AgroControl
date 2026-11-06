@@ -2,7 +2,9 @@
 import { toast } from 'sonner'
 import { ROL_LABEL } from '@/lib/types'
 
+import { useState } from 'react'
 import { useTheme } from 'next-themes'
+import { apiFetch } from '@/lib/api-client'
 import { useApp } from '@/lib/app-context'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +13,25 @@ import { Switch } from '@/components/ui/switch'
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 
 export function SettingsView() {
-  const { state, logout } = useApp()
+  const { state, logout, dispatch } = useApp()
+  const [nombre, setNombre] = useState(state.user?.name ?? '')
+  const [guardandoNombre, setGuardandoNombre] = useState(false)
+  const nombreCambiado = nombre.trim().replace(/\s+/g, ' ') !== (state.user?.name ?? '') && nombre.trim().length >= 3
+
+  // Cualquier rol puede cambiar su nombre; correo, CI y rol identifican la cuenta y no se editan
+  const guardarNombre = async () => {
+    setGuardandoNombre(true)
+    try {
+      const r = await apiFetch<{ data: { nombre: string } }>('/auth/perfil', { method: 'PATCH', body: JSON.stringify({ nombre }) })
+      dispatch({ type: 'UPDATE_USER', payload: { name: r.data.nombre } })
+      setNombre(r.data.nombre)
+      toast.success('Nombre Actualizado')
+    } catch (err) {
+      toast.error('No se Pudo Actualizar el Nombre', { description: err instanceof Error ? err.message : undefined })
+    } finally {
+      setGuardandoNombre(false)
+    }
+  }
   const { resolvedTheme, setTheme } = useTheme()
 
   const handleExportData = () => {
@@ -59,8 +79,24 @@ export function SettingsView() {
             <div className="flex-1 space-y-5">
               <FieldGroup>
                 <Field>
-                  <FieldLabel className="text-on-surface font-semibold">Nombre</FieldLabel>
-                  <Input value={state.user?.name || ''} disabled className="bg-surface-high border-0 h-11 rounded-lg" />
+                  <FieldLabel htmlFor="nombre-perfil" className="text-on-surface font-semibold">Nombre</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      id="nombre-perfil"
+                      value={nombre}
+                      maxLength={150}
+                      onChange={(e) => setNombre(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && nombreCambiado && !guardandoNombre) guardarNombre() }}
+                      className="bg-surface-high border-0 h-11 rounded-lg"
+                    />
+                    <Button
+                      onClick={guardarNombre}
+                      disabled={!nombreCambiado || guardandoNombre}
+                      className="h-11 px-5 rounded-lg bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0 font-semibold"
+                    >
+                      {guardandoNombre ? 'Guardando…' : 'Guardar'}
+                    </Button>
+                  </div>
                 </Field>
                 <Field>
                   <FieldLabel className="text-on-surface font-semibold">Correo Electrónico</FieldLabel>

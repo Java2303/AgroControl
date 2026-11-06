@@ -126,4 +126,26 @@ const authController = {
     }
 };
 
+/**
+ * PATCH /api/auth/perfil — cualquier rol cambia su propio nombre. El correo, el CI y el rol no se
+ * editan aquí: identifican la cuenta y el rol solo lo asigna el CIAT.
+ */
+authController.actualizarPerfil = async (req, res) => {
+    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim().replace(/\s+/g, ' ') : '';
+    if (nombre.length < 3 || nombre.length > 150) {
+        return res.status(400).json({ message: 'El nombre debe tener entre 3 y 150 caracteres.' });
+    }
+    try {
+        const r = await db.query(
+            'UPDATE usuarios SET nombre_completo = $1 WHERE usuario_id = $2 AND activo IS NOT FALSE RETURNING nombre_completo',
+            [nombre, req.usuario.id]
+        );
+        if (r.rowCount === 0) return res.status(404).json({ message: 'Usuario no encontrado.' });
+        res.status(200).json({ message: 'Nombre actualizado.', data: { nombre: r.rows[0].nombre_completo } });
+    } catch (error) {
+        console.error('Error al actualizar el perfil:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+};
+
 module.exports = authController;
