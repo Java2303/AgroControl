@@ -32,3 +32,7 @@ node_modules/
 
 # Credenciales del nodo ESP32
 firmware/**/secretos.h
+
+# Comprimidos del firmware para pasarlo a otra PC: pueden llevar secretos.h
+*.rar
+*.zip
