@@ -297,7 +297,8 @@ export function ParcelsView() {
                   </div>
 
                   {/* Bitácora a todo el ancho y las acciones en una fila de iconos iguales: no se cortan en pantallas angostas */}
-                  <div className="space-y-2">
+                  {/* El productor solo tiene Bitácora y Mapa: van lado a lado y a mitades iguales */}
+                  <div className={puedeRegistrarLabores ? 'space-y-2' : 'grid grid-cols-2 gap-2'}>
                     <Button
                       size="sm"
                       onClick={() => setParcelaBitacora(parcel)}
@@ -311,11 +312,12 @@ export function ParcelsView() {
                         variant="outline"
                         size="sm"
                         onClick={() => focusParcelOnMap(parcel.id)}
-                        className="flex-1 bg-surface-high border-0 hover:bg-surface-container"
+                        className="flex-1 bg-surface-high border-0 hover:bg-surface-container font-semibold"
                         aria-label="Ver en el Mapa"
                         title="Ver en el Mapa"
                       >
                         <span className="material-symbols-outlined text-base">map</span>
+                        {!puedeRegistrarLabores && <span className="ml-1">Mapa</span>}
                       </Button>
                       {puedeRegistrarLabores && (
                         <Button
