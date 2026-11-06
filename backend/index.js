@@ -56,7 +56,7 @@ app.use('/api', historialRoutes);
 app.use('/api', telemetriaRoutes);
 app.use('/api', certificadosRoutes);
 
-// --- Ruta de Prueba de Conexión (también la usa Render como health check) ---
+// Health check de Render
 app.get('/test-db', async (req, res) => {
     try {
         const result = await db.query('SELECT NOW()');

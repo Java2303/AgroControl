@@ -1,7 +1,6 @@
 -- Certificado de suelo (RF-18, RN-14): la tabla reportes guarda cada certificado emitido.
 -- El campo detalle conserva la foto de la lectura, la interpretación y los datos de la parcela
 -- al momento de emitirlo, para que el certificado no cambie si después se edita la parcela.
--- Idempotente: se puede ejecutar varias veces (npm run db:init).
 
 DO $$
 BEGIN

@@ -34,7 +34,6 @@ export function AppShell() {
     return () => window.removeEventListener('scroll', alDesplazar)
   }, [])
 
-  // Auth screens
   if (!state.isAuthenticated) {
     if (state.currentView === 'register') {
       return <RegisterForm />
@@ -42,7 +41,6 @@ export function AppShell() {
     return <LoginForm />
   }
 
-  // Main app with navigation - Surface container low as main canvas
   return (
     <div className="min-h-screen bg-surface-low">
       <Navigation />
@@ -52,7 +50,6 @@ export function AppShell() {
         className={`md:hidden fixed top-0 inset-x-0 z-50 h-[env(safe-area-inset-top)] transition-colors duration-300 ${desplazado ? 'bg-surface-low/70 backdrop-blur-md' : 'bg-surface-low'}`}
       />
       
-      {/* Main Content - Editorial spacing */}
       <main className="md:ml-64 min-h-screen pt-[env(safe-area-inset-top)] md:pt-0 pb-20 md:pb-0">
         <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto">
           {state.currentView === 'dashboard' && <DashboardView />}

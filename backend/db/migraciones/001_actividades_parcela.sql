@@ -1,5 +1,4 @@
 -- Bitácora de labores agrícolas por parcela (siembra, fertilización, cosecha, etc.).
--- Idempotente: se puede ejecutar varias veces (npm run db:init).
 -- Las labores no se eliminan: se anulan con un motivo, para conservar la trazabilidad.
 
 CREATE TABLE IF NOT EXISTS public.actividades_parcela (

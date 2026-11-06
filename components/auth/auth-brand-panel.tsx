@@ -32,7 +32,6 @@ export function AuthBrandPanel() {
             <stop offset="100%" stopColor="#8dc63f" stopOpacity="0.08" />
           </linearGradient>
         </defs>
-        {/* Nodo sensor con ondas */}
         <g transform="translate(620 640)">
           <circle r="70" fill="none" stroke="#8dc63f" strokeOpacity="0.12" />
           <circle r="42" fill="none" stroke="#8dc63f" strokeOpacity="0.2" />

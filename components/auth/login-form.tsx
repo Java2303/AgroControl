@@ -29,7 +29,6 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      // 📡 Conexión real con el Backend de Agro Control
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,13 +40,12 @@ export function LoginForm() {
     if (response.ok) {
       login({
         id: result.user.id,
-        name: result.user.nombre, // Asegúrate de que coincida con lo que envía tu API
+        name: result.user.nombre,
         email: email,
-        ci_nit: result.user.ci_nit, // ⬅️ AGREGAR ESTA LÍNEA para resolver el error
+        ci_nit: result.user.ci_nit,
         userType: result.user.rol,
         token: result.token
       })
-        // Redirigimos al Dashboard principal
         navigate('dashboard') 
       } else {
         setError(result.message || 'Credenciales incorrectas')
@@ -63,7 +61,6 @@ export function LoginForm() {
     <div className="surface-dark min-h-screen grid lg:grid-cols-[1.15fr_1fr] bg-[var(--primary)]">
       <AuthBrandPanel />
       <div className="relative flex items-center justify-center p-4 lg:p-10">
-      {/* Fondo con patrón sutil */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
         <div className="absolute inset-0" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238dc63f' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,

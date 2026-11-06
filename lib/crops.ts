@@ -31,7 +31,6 @@ export function getCropNameById(cropId: number | string | undefined | null): str
   const match = CULTIVOS_CIAT_SANTA_CRUZ.find(c => c.tipo_cultivo_id === idNum)
   if (match) return match.nombre
 
-  // Si es un nombre en texto directo (ej: 'soya', 'maiz')
   if (typeof cropId === 'string') {
     const lower = cropId.toLowerCase()
     const found = CULTIVOS_CIAT_SANTA_CRUZ.find(c => c.nombre.toLowerCase().includes(lower))

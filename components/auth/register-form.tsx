@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { API_URL } from '@/lib/api-config'
 import { AuthBrandPanel } from '@/components/auth/auth-brand-panel'
 
-// 💡 NOTA: Cambia 'localhost' por tu IP local (ej. 192.168.x.x) para pruebas en móvil
 const API_BASE_URL = API_URL
 
 // Política de contraseñas (misma regla que el backend): cualquier símbolo cuenta como carácter especial
@@ -25,7 +24,6 @@ const REQUISITOS_PASSWORD = [
 export function RegisterForm() {
   const { navigate } = useApp()
   
-  // 1. ESTADOS
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,7 +38,6 @@ export function RegisterForm() {
   const [success, setSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  // 2. EFECTOS (Ubicados aquí para asegurar orden constante de Hooks)
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => navigate('login'), 2000);
@@ -48,7 +45,6 @@ export function RegisterForm() {
     }
   }, [success, navigate]);
 
-  // 3. MANEJADORES DE LOGICA
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) {
@@ -90,7 +86,6 @@ export function RegisterForm() {
 
     setIsLoading(true)
     try {
-      // 📡 Conexión con Backend Agro Control (Node.js/Express)
       const response = await fetch(`${API_BASE_URL}/auth/registrar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,7 +95,6 @@ export function RegisterForm() {
           password: formData.password,
           telefono: formData.phone,
           ci_nit: formData.ci,
-          // Mapeo de roles según la base de datos relacional PostgreSQL
           rol: formData.userType === 'tecnico' ? 'agronomo' : 'productor',
         }),
       });
@@ -123,7 +117,6 @@ export function RegisterForm() {
     }
   }
 
-  // 4. RENDERIZADO (UI/UX Agro Control)
   return (
     <div className="surface-dark min-h-screen grid lg:grid-cols-[1.15fr_1fr] bg-[var(--primary)]">
       <AuthBrandPanel />

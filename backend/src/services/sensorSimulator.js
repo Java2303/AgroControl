@@ -5,7 +5,6 @@ const SUPERFICIE_MAX_LOTE = 15;
 
 const simulateSensors = async () => {
     try {
-        // 1. Obtener todas las parcelas de la base de datos
         // Las parcelas con un nodo ESP32 vinculado reciben lecturas reales por POST /api/telemetria
         const resParcelas = await db.query(
             `SELECT parcela_id, nombre, area_hectareas FROM parcelas p
@@ -16,7 +15,6 @@ const simulateSensors = async () => {
         for (const parcela of parcelas) {
           // Un error en una parcela no debe detener la simulación de las demás
           try {
-            // 2. Verificar si la parcela tiene un lote creado, si no, crearlo
             let resLote = await db.query('SELECT lote_id FROM lotes WHERE parcela_id = $1 LIMIT 1', [parcela.parcela_id]);
             let loteId;
 
@@ -33,7 +31,6 @@ const simulateSensors = async () => {
                 loteId = resLote.rows[0].lote_id;
             }
 
-            // 3. Generar lecturas con pequeñas variaciones sobre rangos óptimos
             const humedad = parseFloat((Math.random() * 30 + 45).toFixed(1)); // 45% - 75%
             const temperatura = parseFloat((Math.random() * 12 + 18).toFixed(1)); // 18°C - 30°C
             const ph = parseFloat((Math.random() * 1.6 + 5.9).toFixed(1)); // 5.9 - 7.5
@@ -42,7 +39,6 @@ const simulateSensors = async () => {
             const potasio = parseFloat((Math.random() * 100 + 100).toFixed(1)); // 100 - 200 ppm
             const ec = Math.floor(Math.random() * 500 + 300); // 300 - 800 uS/cm
 
-            // 4. Registrar lectura en PostgreSQL
             await db.query(
                 `INSERT INTO lecturas_suelo (lote_id, nitrogeno, fosforo, potasio, ph, humedad_suelo, temperatura_suelo, conductividad_electrica)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -53,7 +49,7 @@ const simulateSensors = async () => {
           }
         }
 
-        // 5. Mantener la base de datos limpia borrando lecturas viejas que pasen de las últimas 50 por lote
+        // Conserva solo las últimas 50 lecturas de cada lote
         await db.query(`
             DELETE FROM lecturas_suelo 
             WHERE lectura_id NOT IN (
@@ -73,12 +69,9 @@ const simulateSensors = async () => {
     }
 };
 
-// Iniciar simulación periódica cada 15 segundos
 const startSimulator = () => {
     console.log('--- Iniciando simulador de sensores IoT de Agro-Control ---');
-    // Ejecución inicial inmediata
     simulateSensors();
-    // Bucle periódico
     setInterval(simulateSensors, 15000);
 };
 

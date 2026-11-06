@@ -14,7 +14,7 @@ export interface Parcel {
   id: string
   name: string
   cropType: string
-  area: number // Máximo 50 ha. según requerimiento del CIAT
+  area: number // máximo 50 ha (CIAT)
   soilStatus: SoilStatus
   ubicacion_nombre?: string
   coordinates?: MapPoint[]
@@ -64,7 +64,6 @@ export interface ResumenNPK {
   potasio: number | null
 }
 
-// Actualicemos los tipos para reflejar el hardware real[cite: 1]
 export type SensorReadingType = 
   | 'nitrogen' | 'phosphorus' | 'potassium' 
   | 'ph' | 'humidity' | 'temperature' | 'conductivity'

@@ -117,7 +117,6 @@ export function SensorsView() {
         </div>
       </header>
 
-      {/* Resumen */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {tarjetasResumen.map((t) => (
           <Card key={t.label} className="bg-surface-lowest shadow-ambient border-0">
@@ -176,7 +175,6 @@ export function SensorsView() {
         </p>
       )}
 
-      {/* Sensores agrupados por parcela */}
       {loading ? (
         <div className="space-y-4">
           <Skeleton className="w-64 h-7" />
@@ -211,7 +209,6 @@ export function SensorsView() {
         </div>
       )}
 
-      {/* Análisis NPK con datos reales del backend */}
       {resumen && (
         <Card className="bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-4">

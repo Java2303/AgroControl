@@ -14,7 +14,6 @@ const generarRecomendacionesReglas = (readings) => {
     ];
   }
 
-  // 1. Analizar humedad
   const parcelasSecas = readings.filter(r => parseFloat(r.humidity) < 40);
   if (parcelasSecas.length > 0) {
     recommendations.push({
@@ -24,7 +23,6 @@ const generarRecomendacionesReglas = (readings) => {
     });
   }
 
-  // 2. Analizar Nitrógeno
   const parcelasBajoN = readings.filter(r => parseFloat(r.nitrogen) < 80);
   if (parcelasBajoN.length > 0) {
     recommendations.push({
@@ -34,7 +32,6 @@ const generarRecomendacionesReglas = (readings) => {
     });
   }
 
-  // 3. Analizar pH
   const parcelasAcidas = readings.filter(r => parseFloat(r.ph) < 6.0);
   if (parcelasAcidas.length > 0) {
     recommendations.push({
@@ -44,7 +41,7 @@ const generarRecomendacionesReglas = (readings) => {
     });
   }
 
-  // 4. R-04: fósforo o potasio en nivel bajo según la tabla del CIAT (Cuadro 3.3)
+  // R-04: fósforo o potasio en nivel bajo según la tabla del CIAT (Cuadro 3.3)
   const parcelasPKBajo = readings.filter(r =>
     (r.phosphorus != null && clasificarFosforo(r.phosphorus) === 'Bajo') ||
     (r.potassium != null && clasificarPotasio(r.potassium) === 'Bajo'));
@@ -56,7 +53,6 @@ const generarRecomendacionesReglas = (readings) => {
     });
   }
 
-  // 5. Agregar recomendación de éxito general si todo está bien
   if (recommendations.length === 0) {
     recommendations.push({
       text: 'Niveles de nutrientes y humedad óptimos en todos tus cultivos. Monitoreo estable.',

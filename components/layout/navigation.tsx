@@ -26,9 +26,7 @@ export function Navigation() {
 
   return (
     <>
-      {/* Desktop Sidebar - Dark surface with tonal sections */}
       <aside className="surface-dark hidden md:flex flex-col w-64 bg-[var(--primary)] text-[var(--on-primary)] h-screen fixed left-0 top-0 z-40">
-        {/* Logo section */}
         <div className="p-6 bg-[var(--primary-container)]/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--tertiary)] to-[var(--tertiary-fixed-dim)] flex items-center justify-center shadow-elevated">
@@ -41,7 +39,6 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* User Info - subtle tonal shift */}
         <div className="p-4 bg-[var(--primary-container)]/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[var(--tertiary)]/12 flex items-center justify-center">
@@ -54,7 +51,6 @@ export function Navigation() {
           </div>
         </div>
 
-        {/* Navigation - no borders, use spacing */}
         <nav className="flex-1 p-4">
           <div className="space-y-1.5">
             {navItems.map((item) => (
@@ -75,7 +71,6 @@ export function Navigation() {
           </div>
         </nav>
 
-        {/* Logout - subtle hover state */}
         <div className="p-4">
           <button
             onClick={logout}
@@ -87,11 +82,8 @@ export function Navigation() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation - glassmorphism */}
       <nav className="surface-dark md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
-        {/* 6 botones en 360–390 px: cada uno ocupa una fracción igual del ancho */}
         <div className="flex py-1.5 px-1">
-          {/* Sin «Salir»: cerrar sesión está dentro de Ajustes */}
           {navItems.map((item) => (
             <button
               key={item.id}

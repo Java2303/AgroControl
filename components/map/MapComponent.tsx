@@ -72,7 +72,6 @@ export function MapComponent({
 }: MapComponentProps) {
   const capas = useRef<Record<string, L.Polygon>>({})
   
-  // Rastrear el zoom actual para ocultar/mostrar las etiquetas
   const [zoomLevel, setZoomLevel] = useState(12)
 
   function MapEvents() {
@@ -85,7 +84,6 @@ export function MapComponent({
         }
       },
       zoomend() {
-        // Actualizamos el estado cada vez que el usuario hace scroll con la rueda
         setZoomLevel(map.getZoom())
       }
     })
@@ -187,7 +185,6 @@ export function MapComponent({
               weight: enfocada ? 3.5 : 2.5
             }}
           >
-            {/* Solo mostramos la etiqueta flotante si el zoom es 13 o más cercano */}
             {zoomLevel >= 13 && (
               <Tooltip 
                 direction="center" 

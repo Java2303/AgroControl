@@ -6,7 +6,7 @@ const { hoyEnBolivia, cambiosParcela, validarBaja, MOTIVOS_BAJA } = require('../
 const SUPERFICIE_MAX_LOTE = 15;
 
 /**
- * 🗺️ Registra una nueva parcela desde el mapa satelital
+ * POST /api/parcelas — registra una parcela dibujada en el mapa satelital.
  */
 const crearParcela = async (req, res) => {
     try {
@@ -29,7 +29,6 @@ const crearParcela = async (req, res) => {
             });
         }
 
-        // 1. ⚙️ Validar regla de negocio del CIAT (Máximo 50 hectáreas)
         if (!validarLimiteHectareas(parseFloat(area_hectareas))) {
             return res.status(400).json({
                 status: 'error',
@@ -37,14 +36,12 @@ const crearParcela = async (req, res) => {
             });
         }
 
-        // 2. 🗄️ Insertar en PostgreSQL transformando el GeoJSON a geometría de PostGIS con SRID 4326
         const queryText = `
             INSERT INTO parcelas (usuario_id, nombre, ubicacion_nombre, tipo_cultivo_id, area_hectareas, geom)
             VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromGeoJSON($6), 4326))
             RETURNING parcela_id, nombre, area_hectareas, tipo_cultivo_id;
         `;
 
-        // Convertimos el objeto de geometría del mapa a texto para ST_GeomFromGeoJSON
         const geometriaStr = typeof geometria === 'string' ? geometria : JSON.stringify(geometria);
 
         const values = [
@@ -85,7 +82,7 @@ const crearParcela = async (req, res) => {
             client.release();
         }
 
-        // 3. Crear automáticamente un lote principal para sensores IoT
+        // Lote principal del nodo IoT
         try {
             const macRandom = `00:1A:C2:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}`;
             await db.query(
@@ -97,7 +94,6 @@ const crearParcela = async (req, res) => {
             console.error('Aviso: no se pudo crear lote automático:', loteErr);
         }
 
-        // 4. 🎉 Respuesta exitosa
         res.status(201).json({
             status: 'success',
             message: 'Parcela registrada exitosamente para trazabilidad.',
@@ -114,7 +110,6 @@ const crearParcela = async (req, res) => {
 };
 const obtenerParcelas = async (req, res) => {
     try {
-        // Extraemos el ID del usuario que el authMiddleware inyectó en la petición
         const usuario_id = req.usuario.id;
         // El administrador del CIAT supervisa todas las parcelas (Cuadro 3.36); los demás roles ven solo las suyas
         const esAdmin = req.usuario.rol === 'admin_ciat';
@@ -167,7 +162,6 @@ const actualizarParcela = async (req, res) => {
             return res.status(400).json({ status: 'error', message: 'El nombre de la parcela no es válido.' });
         }
 
-        // Convertir cropType a número de ID si viene como string/id
         let tipo_cultivo_id = 1;
         if (typeof cropType === 'number') {
             tipo_cultivo_id = cropType;

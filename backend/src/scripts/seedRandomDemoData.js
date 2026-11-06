@@ -148,7 +148,6 @@ async function seedRandomData() {
       console.log(`\n> Configurando datos para usuario: ${user.email} (${user.nombre_completo})...`);
 
       for (const p of sampleParcels) {
-        // Verificar si la parcela ya existe para este usuario
         const existing = await pool.query(
           'SELECT parcela_id FROM parcelas WHERE usuario_id = $1 AND nombre = $2',
           [user.usuario_id, p.nombre]
@@ -170,7 +169,6 @@ async function seedRandomData() {
           parcelaId = existing.rows[0].parcela_id;
         }
 
-        // Crear o buscar lote
         const existingLote = await pool.query(
           'SELECT lote_id FROM lotes WHERE parcela_id = $1 LIMIT 1',
           [parcelaId]

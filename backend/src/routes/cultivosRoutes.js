@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
-const authMiddlware = require('../middlewares/authMiddlware'); // 🔄 Nombre con el error de dedo corregido
+const authMiddlware = require('../middlewares/authMiddlware');
 
 router.get('/cultivos', authMiddlware, async (req, res) => {
   try {
@@ -9,7 +9,6 @@ router.get('/cultivos', authMiddlware, async (req, res) => {
       'SELECT tipo_cultivo_id, nombre FROM tipos_cultivo ORDER BY nombre ASC'
     );
 
-    // 🌟 Enviamos un array directo en la propiedad 'data'
     res.json({
       status: 'success',
       data: resultado.rows

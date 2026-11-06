@@ -219,7 +219,6 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
             </SheetHeader>
 
             <div className="p-6 space-y-6">
-              {/* Estado del ciclo */}
               {actividades === null ? (
                 <Skeleton className="h-24 rounded-xl" />
               ) : (
@@ -267,7 +266,6 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                 </div>
               )}
 
-              {/* Registrar labor */}
               {puedeRegistrar ? (
                 mostrarFormulario ? (
                   <div className="rounded-xl bg-surface-lowest p-5 shadow-ambient space-y-4">
@@ -367,7 +365,6 @@ export function ParcelHistory({ parcel, onOpenChange, puedeRegistrar: puedeRegis
                 <p className="text-sm text-[var(--error)] flex items-center gap-2"><span className="material-symbols-outlined text-base">error</span>{error}</p>
               )}
 
-              {/* Línea de tiempo */}
               {actividades === null ? (
                 <div className="space-y-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
               ) : actividades.length === 0 ? (

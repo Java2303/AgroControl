@@ -1,6 +1,5 @@
 const { Pool } = require('pg');
 const path = require('path');
-// Forzamos la carga del .env especificando la ruta exacta
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 // En la nube (Neon) se usa DATABASE_URL. Se fuerza sslmode=verify-full para verificar
@@ -14,7 +13,7 @@ const pool = databaseUrl
         user: process.env.DB_USER,
         host: process.env.DB_HOST,
         database: process.env.DB_NAME,
-        password: String(process.env.DB_PASSWORD || ''), // Forzamos que sea String
+        password: String(process.env.DB_PASSWORD || ''),
         port: process.env.DB_PORT,
     });
 

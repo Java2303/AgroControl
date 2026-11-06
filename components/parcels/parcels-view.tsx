@@ -49,7 +49,6 @@ export function ParcelsView() {
   // El administrador ve todas las parcelas del CIAT, pero solo gestiona las propias (solo el dueño escribe en su bitácora)
   const puedeGestionar = (p: Parcel) => puedeRegistrarLabores && p.propia !== false
 
-  // El estado del suelo se deriva de las lecturas actuales de cada parcela
   const estados = useMemo(() => estadosPorParcela(readings), [readings])
   const parcelasConEstado = parcels.map((p) => ({ ...p, soilStatus: estados[p.id] ?? p.soilStatus }))
 
@@ -304,8 +303,7 @@ export function ParcelsView() {
                     </div>
                   </div>
 
-                  {/* Bitácora a todo el ancho y las acciones en una fila de iconos iguales: no se cortan en pantallas angostas */}
-                  {/* El productor solo tiene Bitácora y Mapa: van lado a lado y a mitades iguales */}
+                  {/* El productor solo tiene Bitácora y Mapa: van lado a lado */}
                   <div className={puedeGestionar(parcel) ? 'space-y-2' : 'grid grid-cols-2 gap-2'}>
                     <Button
                       size="sm"
@@ -414,7 +412,6 @@ export function ParcelsView() {
         puedeRegistrar={!!parcelaBitacora && puedeGestionar(parcelaBitacora)}
       />
 
-      {/* Editar */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
@@ -464,7 +461,6 @@ export function ParcelsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Certificado de suelo */}
       <Dialog open={!!certificado} onOpenChange={(abierto) => { if (!abierto) setCertificado(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
@@ -504,7 +500,6 @@ export function ParcelsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Sensor ESP32 */}
       <Dialog open={!!parcelaSensor} onOpenChange={(abierto) => { if (!abierto) setParcelaSensor(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
@@ -575,7 +570,6 @@ export function ParcelsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Dar de baja */}
       <Dialog open={!!parcelaBaja} onOpenChange={(abierto) => { if (!abierto) setParcelaBaja(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>

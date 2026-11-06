@@ -137,7 +137,6 @@ export function DashboardView() {
         </div>
       </header>
 
-      {/* Métricas */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {cargandoSensores
           ? Array.from({ length: 4 }, (_, i) => (
@@ -184,7 +183,6 @@ export function DashboardView() {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Parcelas */}
         <Card className="lg:col-span-2 bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <div className="flex items-center justify-between">
@@ -250,7 +248,6 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        {/* Recomendaciones */}
         <Card className="bg-surface-lowest shadow-ambient border-0">
           <CardHeader className="pb-5">
             <CardTitle className="text-headline text-on-surface flex items-center gap-2">

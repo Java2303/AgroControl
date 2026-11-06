@@ -83,7 +83,7 @@ const AppContext = createContext<AppContextType | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  // 🔐 Recuperar Sesión: Al arrancar, buscamos solo el Token/Usuario
+  // Recupera la sesión guardada al arrancar
   useEffect(() => {
     const savedUser = localStorage.getItem('agro-control-user')
     if (savedUser) {
@@ -102,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 🚪 La API respondió 401 (token vencido o inválido): volver al login
+  // La API respondió 401 (token vencido o inválido): volver al login
   useEffect(() => {
     const alExpirar = () => {
       localStorage.removeItem('agro-control-user')
@@ -112,7 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, alExpirar)
   }, [])
 
-  // ⏱️ Cierre automático de sesión cuando el JWT expira (8 h)
+  // Cierre automático de sesión cuando el JWT expira (8 h)
   useEffect(() => {
     if (!state.isAuthenticated || !state.user?.token) return
     const expiracion = obtenerExpiracionToken(state.user.token)
@@ -124,7 +124,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [state.isAuthenticated, state.user])
 
-  // 💾 Persistencia Selectiva: Solo guardamos la sesión del usuario/token
   useEffect(() => {
     if (state.isAuthenticated && state.user) {
       localStorage.setItem('agro-control-user', JSON.stringify(state.user))

@@ -1,15 +1,14 @@
 const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
-  // Proporciona la ruta a tu aplicación Next.js para cargar next.config.js y los archivos .env en tu entorno de prueba
+  // Carga next.config.js y los .env en el entorno de prueba
   dir: './',
 })
 
-// Configuraciones personalizadas de Jest
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
-  // Esto es vital para que SonarCloud encuentre los archivos en la ruta correcta
+  // Rutas que SonarCloud usa para la cobertura
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'backend/src/**/*.{js,jsx,ts,tsx}',

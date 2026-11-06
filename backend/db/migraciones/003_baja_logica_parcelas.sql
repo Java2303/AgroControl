@@ -1,6 +1,5 @@
 -- Baja lógica de parcelas: en lugar de eliminarse, se marcan como dadas de baja con un motivo.
 -- Su bitácora, lotes y lecturas se conservan para el historial del CIAT.
--- Idempotente: se puede ejecutar varias veces (npm run db:init).
 
 ALTER TABLE public.parcelas ADD COLUMN IF NOT EXISTS activa boolean DEFAULT true NOT NULL;
 ALTER TABLE public.parcelas ADD COLUMN IF NOT EXISTS fecha_baja timestamp with time zone;
@@ -20,7 +19,6 @@ ALTER TABLE public.parcelas ADD CONSTRAINT parcela_motivo_baja_valido CHECK (
 
 CREATE INDEX IF NOT EXISTS idx_parcelas_usuario_activa ON public.parcelas USING btree (usuario_id, activa);
 
--- Nuevo evento automático de la bitácora
 ALTER TABLE public.actividades_parcela DROP CONSTRAINT IF EXISTS actividad_tipo_valido;
 ALTER TABLE public.actividades_parcela ADD CONSTRAINT actividad_tipo_valido CHECK (tipo IN (
     'siembra', 'fertilizacion', 'encalado', 'riego', 'fitosanitario', 'muestreo', 'cosecha', 'otra',

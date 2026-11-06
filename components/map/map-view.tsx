@@ -29,7 +29,7 @@ const MapComponent = dynamic(
 export interface MapPoint {
   lat: number
   lng: number
-  nota?: string // Permitimos que el punto guarde una nota de texto
+  nota?: string
 }
 
 interface Cultivo {
@@ -166,7 +166,6 @@ export function MapView() {
         </div>
       </header>
 
-      {/* Barra de herramientas responsiva */}
       {puedeDibujar && (
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardContent className="p-3 sm:p-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:flex md:flex-wrap md:items-center">
@@ -207,21 +206,19 @@ export function MapView() {
       </Card>
       )}
 
-      {/* Contenedor del Mapa */}
       <Card className="bg-surface-lowest shadow-ambient border-0 overflow-hidden relative isolate">
         <MapComponent 
           mode={mode} 
           currentPoints={currentPoints} 
           setCurrentPoints={setCurrentPoints} 
           markers={markers}
-          onAddMarker={handleMapClickForMarker} // 📝 Conectado a la función de control
+          onAddMarker={handleMapClickForMarker}
           parcels={parcels}
           cultivos={cultivos}
           focusId={state.mapFocusId}
           onSelectParcel={focusParcelOnMap}
         />
 
-        {/* Leyenda de cultivos */}
         {cultivosEnMapa.length > 0 && (
           <div className="absolute bottom-4 left-4 z-[500] max-w-[calc(100%-2rem)] rounded-xl bg-surface-lowest/95 backdrop-blur px-4 py-3 shadow-elevated">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-2">Cultivos</p>
@@ -237,7 +234,6 @@ export function MapView() {
         )}
       </Card>
 
-      {/* 🌾 Diálogo 1: Registrar Parcela */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated z-[10000]">
           <DialogHeader>
@@ -285,7 +281,6 @@ export function MapView() {
         </DialogContent>
       </Dialog>
 
-      {/* 📍 Diálogo 2: Registrar Nota del Punto de Referencia */}
       <Dialog open={showMarkerDialog} onOpenChange={setShowMarkerDialog}>
         <DialogContent className="sm:max-w-xs border-0 shadow-elevated z-[10000]">
           <DialogHeader>

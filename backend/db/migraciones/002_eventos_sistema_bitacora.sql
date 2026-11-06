@@ -1,5 +1,4 @@
 -- Eventos automáticos en la bitácora: registro de la parcela y cada edición de sus datos.
--- Idempotente: se puede ejecutar varias veces (npm run db:init).
 
 -- Datos del evento: foto de la parcela al registrarse o los cambios (antes / después) de una edición
 ALTER TABLE public.actividades_parcela ADD COLUMN IF NOT EXISTS detalle jsonb;

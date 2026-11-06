@@ -52,7 +52,6 @@ export function SettingsView() {
 
   return (
     <div className="space-y-8">
-      {/* Header - Editorial typography */}
       <header className="pt-4">
         <p className="text-on-surface-variant text-sm font-medium uppercase tracking-wider mb-2">
           Configuración
@@ -60,7 +59,6 @@ export function SettingsView() {
         <h1 className="text-display-md text-on-surface">Ajustes</h1>
       </header>
 
-      {/* Profile Card - Tonal layering, no borders */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardHeader className="pb-4">
           <CardTitle className="text-headline text-on-surface flex items-center gap-2">
@@ -112,7 +110,6 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Display */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardHeader className="pb-4">
           <CardTitle className="text-headline text-on-surface flex items-center gap-2">
@@ -135,7 +132,6 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Data Management */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardHeader className="pb-4">
           <CardTitle className="text-headline text-on-surface flex items-center gap-2">
@@ -154,7 +150,6 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* About */}
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardHeader className="pb-4">
           <CardTitle className="text-headline text-on-surface flex items-center gap-2">
@@ -185,7 +180,6 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Logout - xl roundedness */}
       <Button
         onClick={logout}
         variant="outline"

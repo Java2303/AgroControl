@@ -41,7 +41,6 @@ const sensoresController = {
       // El administrador del CIAT supervisa todas las parcelas (Cuadro 3.36); los demás roles ven solo las suyas
       const esAdmin = req.usuario.rol === 'admin_ciat';
 
-      // 1. Obtener la última lectura de cada parcela/lote
       const queryUltimas = `
         SELECT 
           p.parcela_id AS "parcelId",
@@ -69,7 +68,6 @@ const sensoresController = {
 
       const resUltimas = await db.query(queryUltimas, [usuario_id, esAdmin]);
 
-      // 2. Obtener el historial de las últimas 10 lecturas de cada lote
       const queryHistorial = `
         SELECT 
           l.parcela_id AS "parcelId",
@@ -91,7 +89,6 @@ const sensoresController = {
 
       const resHistorial = await db.query(queryHistorial, [usuario_id, esAdmin]);
 
-      // Agrupar historial por parcela
       const historialPorParcela = {};
       resHistorial.rows.forEach(row => {
         if (!historialPorParcela[row.parcelId]) {
@@ -108,7 +105,6 @@ const sensoresController = {
         historialPorParcela[row.parcelId].nitrogen.push(parseFloat(row.nitrogen || 0));
       });
 
-      // Mapear resultados a la estructura SensorReading que espera el frontend
       const respuesta = [];
 
       resUltimas.rows.forEach(row => {
