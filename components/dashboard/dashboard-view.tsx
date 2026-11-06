@@ -42,6 +42,7 @@ const estadoPorRango = (valor: number, optimo: { min: number; max: number }, ale
 
 export function DashboardView() {
   const { state, navigate } = useApp()
+  const esProductor = state.user?.userType === 'productor'
   const { parcels, loading: cargandoParcelas, error: errorParcelas } = useParcels()
   const { readings, loading: cargandoSensores, actualizado } = useSensors()
   const [recomendaciones, setRecomendaciones] = useState<Recomendacion[] | null>(null)
@@ -237,13 +238,13 @@ export function DashboardView() {
                   <span className="material-symbols-outlined text-on-surface-variant text-3xl">landscape</span>
                 </div>
                 <p className="text-on-surface-variant mb-5">No tienes parcelas registradas</p>
-                <button
+                {!esProductor && <button
                   onClick={() => navigate('map')}
                   className="inline-flex items-center gap-2 px-5 py-3 bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] rounded-xl font-semibold hover:bg-[var(--tertiary-fixed-dim)] transition-smooth shadow-ambient"
                 >
                   <span className="material-symbols-outlined text-lg">add</span>
-                  Crear primera parcela
-                </button>
+                  Crear Primera Parcela
+                </button>}
               </div>
             )}
           </CardContent>

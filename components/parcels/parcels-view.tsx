@@ -44,7 +44,7 @@ export function ParcelsView() {
   const [certificado, setCertificado] = useState<{ parcela: Parcel; cargando: boolean; error: string | null; cert: CertificadoSuelo | null } | null>(null)
   const [parcelaSensor, setParcelaSensor] = useState<Parcel | null>(null)
   const [sensor, setSensor] = useState<{ mac: string; guardando: boolean; error: string | null; token: string | null; copiado: boolean }>({ mac: '', guardando: false, error: null, token: null, copiado: false })
-  // Matriz de permisos (Cuadro 3.36): el productor consulta la bitácora, no registra labores
+  // Matriz de permisos (Cuadro 3.36): el productor solo consulta (parcelas, sensores, bitácora y certificados)
   const puedeRegistrarLabores = state.user?.userType !== 'productor'
 
   // El estado del suelo se deriva de las lecturas actuales de cada parcela
@@ -183,13 +183,15 @@ export function ParcelsView() {
             <p className="text-on-surface-variant text-sm font-medium uppercase tracking-wider mb-2">Administración</p>
             <h1 className="text-display-md text-on-surface">Parcelas</h1>
           </div>
+          {puedeRegistrarLabores && (
           <Button
-            onClick={() => navigate('map')}
-            className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] h-12 px-6 rounded-xl font-semibold shadow-ambient hover:shadow-elevated transition-smooth border-0"
-          >
-            <span className="material-symbols-outlined text-lg mr-2">add</span>
-            Nueva Parcela
-          </Button>
+              onClick={() => navigate('map')}
+              className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] h-12 px-6 rounded-xl font-semibold shadow-ambient hover:shadow-elevated transition-smooth border-0"
+            >
+              <span className="material-symbols-outlined text-lg mr-2">add</span>
+              Nueva Parcela
+            </Button>
+          )}
         </div>
       </header>
 
@@ -339,6 +341,8 @@ export function ParcelsView() {
                           <span className="material-symbols-outlined text-base">sensors</span>
                         </Button>
                       )}
+                      {puedeRegistrarLabores && (
+                        <>
                       <Button
                         variant="outline"
                         size="sm"
@@ -358,6 +362,8 @@ export function ParcelsView() {
                       >
                         <span className="material-symbols-outlined text-base">block</span>
                       </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -376,9 +382,9 @@ export function ParcelsView() {
                 {searchTerm || filterCrop !== 'all' ? 'No se encontraron parcelas' : 'Sin Parcelas Registradas'}
               </h3>
               <p className="text-on-surface-variant mb-6">
-                {searchTerm || filterCrop !== 'all' ? 'Intenta con otros filtros de búsqueda' : 'Comienza creando tu primera parcela en el mapa'}
+                {searchTerm || filterCrop !== 'all' ? 'Intenta con otros filtros de búsqueda' : puedeRegistrarLabores ? 'Comienza creando tu primera parcela en el mapa' : 'Tu agrónomo registrará las parcelas de tu terreno'}
               </p>
-              {!searchTerm && filterCrop === 'all' && (
+              {!searchTerm && filterCrop === 'all' && puedeRegistrarLabores && (
                 <Button
                   onClick={() => navigate('map')}
                   className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] h-12 px-6 rounded-xl font-semibold shadow-ambient hover:shadow-elevated transition-smooth border-0"

@@ -39,6 +39,8 @@ interface Cultivo {
 
 export function MapView() {
   const { state, focusParcelOnMap } = useApp()
+  // Matriz de permisos (Cuadro 3.36): el productor consulta el mapa, no registra parcelas
+  const puedeDibujar = state.user?.userType !== 'productor'
   const { parcels, setParcels } = useParcels()
   const [currentPoints, setCurrentPoints] = useState<MapPoint[]>([])
   const [markers, setMarkers] = useState<MapPoint[]>([])
@@ -165,6 +167,7 @@ export function MapView() {
       </header>
 
       {/* Barra de herramientas responsiva */}
+      {puedeDibujar && (
       <Card className="bg-surface-lowest shadow-ambient border-0">
         <CardContent className="p-3 sm:p-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:flex md:flex-wrap md:items-center">
           <Button
@@ -202,6 +205,7 @@ export function MapView() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Contenedor del Mapa */}
       <Card className="bg-surface-lowest shadow-ambient border-0 overflow-hidden relative isolate">
