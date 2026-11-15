@@ -6,7 +6,7 @@ const verificarToken = (req, res, next) => {
 
     if (esquema !== 'Bearer' || !token) {
         return res.status(401).json({
-            message: "Acceso denegado. No se proporciono un token de seguridad."
+            message: "Acceso denegado. No se proporcionó la credencial de acceso."
         });
     }
 
@@ -15,14 +15,14 @@ const verificarToken = (req, res, next) => {
         const verificado = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
         if (!verificado || !verificado.id) {
-            return res.status(401).json({ message: "Token invalido." });
+            return res.status(401).json({ message: "Credencial inválida." });
         }
 
         req.usuario = { id: verificado.id, rol: verificado.rol };
         next();
     } catch (error) {
         return res.status(401).json({
-            message: "Token invalido o expirado. Por favor, inicie sesion nuevamente."
+            message: "Credencial inválida o expirada. Por favor, inicie sesión nuevamente."
         });
     }
 };
@@ -34,7 +34,7 @@ const verificarToken = (req, res, next) => {
 const permitirRoles = (...roles) => (req, res, next) => {
     if (!req.usuario || !roles.includes(req.usuario.rol)) {
         return res.status(403).json({
-            message: "No tiene permisos para realizar esta operacion."
+            message: "No tiene permisos para realizar esta operación."
         });
     }
     next();

@@ -1,6 +1,6 @@
 # Estado del proyecto — Agro Control
 
-Resumen para retomar el trabajo en otra computadora (o con un asistente nuevo). Actualizado el 5/11/2026.
+Resumen para retomar el trabajo en otra computadora (o con un asistente nuevo). Actualizado el 15/11/2026.
 Las contraseñas y la clave del nodo **no** van aquí: el repositorio es público.
 
 ## Qué es
@@ -24,26 +24,28 @@ Detalle de despliegue y variables de entorno: [DESPLIEGUE.md](DESPLIEGUE.md).
 - `app/`, `components/`, `lib/`: interfaz Next.js 16 + React 19 + Tailwind. `app/verificar` es la página pública del certificado.
 - `backend/`: API Express 5. `src/controllers`, `src/routes`, `src/services` (motor de reglas, tabla del CIAT, simulador), `src/utils`, `db/migraciones` (idempotentes).
 - `android/`: proyecto Capacitor 7.
-- `firmware/agro_control_nodo/`: firmware del ESP32 (Arduino IDE, placa "ESP32 Dev Module", paquete esp32 3.3.x, sin librerías externas).
+- `firmware/agro_control_nodo/`: firmware del ESP32 en pestañas: principal, `modbus`, `red` y `emulador` (Arduino IDE, placa "ESP32 Dev Module", paquete esp32 3.3.x, sin librerías externas).
+- La base de datos usa nombres en español (`rol_usuario`, `correo`, `contrasena_hash`, `geometria`, `clave_dispositivo_hash`); la migración 007 los renombró.
+- Cada parcela se divide en un lote por cada 15 ha o fracción, hasta cuatro (función `dividir_en_lotes` de PostGIS). El sensor y el certificado se asignan por lote.
 
 ## Roles
 
 - **Agrónomo**: registra parcelas, vincula sensores, carga labores y emite certificados.
 - **Productor Asociado** (`productor` en la base): solo consulta.
-- **Administrador CIAT** (`admin_ciat`): ve todas las parcelas de la institución, gestiona solo las propias. Se crea con `npm run admin:crear` (ver DESPLIEGUE.md).
+- **Administrador CIAT** (`admin_ciat`): ve todas las parcelas de la institución, gestiona solo las propias y administra las cuentas en la vista Usuarios (cambio de rol y desactivación, UC-04). El primero se crea con `npm run admin:crear` (ver DESPLIEGUE.md).
 
 ## Nodo ESP32
 
 - MAC del nodo de pruebas: `1C:C3:AB:C1:7C:5C`.
 - El sensor 7 en 1 todavía no llegó: el firmware usa `MODO_EMULADOR = true` y `EMULADOR_SIN_CABLES = true`, responde las tramas Modbus por dentro del chip y envía `"emulado": true`. La API guarda la lectura como emulada y el certificado lo declara (RN-10).
 - Credenciales en `firmware/agro_control_nodo/secretos.h` (copia de `secretos.ejemplo.h`, ignorado por git): `WIFI_SSID`, `WIFI_PASSWORD` (red de 2,4 GHz), `DEVICE_TOKEN`.
-- La clave se obtiene en la app: Parcelas → ícono de sensor → Vincular (se muestra una sola vez; "Generar Nueva Clave" la reemplaza). Una MAC solo puede estar en una parcela: desvincular antes de moverla.
+- La clave se obtiene en la app: Parcelas → ícono de sensor → elegir el lote → Vincular (se muestra una sola vez; "Generar Nueva Clave" la reemplaza). Una MAC solo puede estar en un lote: desvincular antes de moverla.
 - Prueba sin hardware: `npm run nodo:simular -- <url_api> <mac> <clave>` en `backend/`.
 
 ## Comandos
 
 ```bash
-# Pruebas (41)
+# Pruebas (46)
 cd backend && npx jest
 
 # Web local
@@ -59,21 +61,21 @@ cd android && ./gradlew assembleDebug   # → app/build/outputs/apk/debug/app-de
 
 ## Estado de las pruebas
 
-- 41 pruebas unitarias aprobadas (dominio, seguridad, bitácora, telemetría, tabla del CIAT, certificado).
-- Aceptación en el sistema publicado: PA-01 a PA-22, salvo PA-10 (división en lotes, observada).
+- 46 pruebas unitarias aprobadas (dominio, seguridad, bitácora, telemetría, tabla del CIAT, certificado, usuarios).
+- Aceptación en el sistema publicado: PA-01 a PA-23, todas aprobadas.
 - Nodo ESP32 real enviando a la API (HTTP 201) con valores emulados; APK probado en un teléfono Android 12.
 
 ## Pendiente
 
 - Conectar el sensor 7 en 1 cuando llegue y poner `MODO_EMULADOR = false`.
-- División automática de parcelas mayores a 15 ha en hasta cuatro lotes (RN-03).
 - Prueba de usabilidad (SUS) con el CIAT.
 - Pantalla para que el agrónomo asigne parcelas a un productor asociado.
+- Generar el APK con los cambios del 15/11 (lotes, Usuarios, Tablero).
 - Actualizar Next.js (16.4.0 tiene un aviso de seguridad).
 
 ## Documento de la tesis
 
-No está en el repositorio. Versión vigente: `Proyecto de Grado V8- AGRO CONTROL.docx` (143 páginas), en la carpeta padre `AGRO-CONTROL/`, junto con su PDF, las diapositivas de la defensa y el PDF para imprimir.
+No está en el repositorio. Versión vigente: `Proyecto de Grado V9- AGRO CONTROL.docx` (144 páginas, con las correcciones del comité), en la carpeta padre `AGRO-CONTROL/`, junto con su PDF y la copia para entregar `VAJA-Documento proyecto de grado Ver.2.10.pdf`.
 
 ## Convenciones
 
