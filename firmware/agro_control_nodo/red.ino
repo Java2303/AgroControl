@@ -24,7 +24,7 @@ String fechaActual() {
 
 void enviarLectura(const Lectura& l) {
   String fecha = fechaActual();
-  String campoFecha = fecha.length() > 0 ? "\"timestamp\":\"" + fecha + "\"," : "";
+  String campoFecha = fecha.length() > 0 ? "\"fecha\":\"" + fecha + "\"," : "";
 
   char json[320];
   snprintf(json, sizeof(json),

@@ -59,8 +59,10 @@ const validarTelemetria = (body, ahora = Date.now()) => {
     }
 
     let fecha = new Date(ahora);
-    if (b.timestamp !== undefined && b.timestamp !== null && b.timestamp !== '') {
-        const t = Date.parse(b.timestamp);
+    // "fecha" desde el firmware actual; "timestamp" lo enviaban los nodos con el firmware anterior
+    const fechaNodo = b.fecha ?? b.timestamp;
+    if (fechaNodo !== undefined && fechaNodo !== null && fechaNodo !== '') {
+        const t = Date.parse(fechaNodo);
         if (Number.isFinite(t) && t <= ahora + ADELANTO_MAX_MS && t >= ahora - ANTIGUEDAD_MAX_MS) fecha = new Date(t);
     }
 

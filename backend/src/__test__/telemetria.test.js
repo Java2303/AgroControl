@@ -37,6 +37,8 @@ describe('Pruebas Unitarias - Telemetría del nodo ESP32 (validarTelemetria)', (
 
   test('Usa la hora del servidor si el nodo no la envía o su reloj está desfasado', () => {
     expect(validarTelemetria({ ...PAQUETE, timestamp: undefined }, AHORA).datos.fecha.getTime()).toBe(AHORA);
+    expect(validarTelemetria({ ...PAQUETE, timestamp: undefined, fecha: '2026-10-26T14:59:30Z' }, AHORA).datos.fecha.toISOString())
+      .toBe('2026-10-26T14:59:30.000Z');
     expect(validarTelemetria({ ...PAQUETE, timestamp: '2026-10-26T16:00:00Z' }, AHORA).datos.fecha.getTime()).toBe(AHORA);
     expect(validarTelemetria({ ...PAQUETE, timestamp: '1970-01-01T00:00:00Z' }, AHORA).datos.fecha.getTime()).toBe(AHORA);
   });
