@@ -41,7 +41,7 @@ export function MapView() {
   const { state, focusParcelOnMap } = useApp()
   // Matriz de permisos (Cuadro 3.36): el productor consulta el mapa, no registra parcelas
   const puedeDibujar = state.user?.userType !== 'productor'
-  const { parcels, setParcels } = useParcels()
+  const { parcels, recargar } = useParcels()
   const [currentPoints, setCurrentPoints] = useState<MapPoint[]>([])
   const [markers, setMarkers] = useState<MapPoint[]>([])
   const [mode, setMode] = useState<'view' | 'polygon' | 'marker'>('view')
@@ -124,16 +124,8 @@ export function MapView() {
         })
       })
 
-      setParcels([...parcels, {
-        id: resultado.data.parcela_id,
-        name: newParcelData.name.trim(),
-        cropType: newParcelData.cropType || '1',
-        ubicacion_nombre: newParcelData.ubicacion_nombre.trim(),
-        area: parseFloat(area.toFixed(2)),
-        soilStatus: 'optimo',
-        coordinates: currentPoints,
-        createdAt: new Date().toISOString()
-      }])
+      // Se recarga desde la API para mostrar los lotes que calculó la base de datos
+      await recargar()
       setCurrentPoints([])
       setNewParcelData({ name: '', cropType: '1', ubicacion_nombre: '' })
       setShowCreateDialog(false)

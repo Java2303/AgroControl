@@ -15,13 +15,13 @@ const recibirTelemetria = async (req, res) => {
     }
     try {
         const r = await db.query(
-            `SELECT l.lote_id, l.dispositivo_token_hash
+            `SELECT l.lote_id, l.clave_dispositivo_hash
              FROM lotes l JOIN parcelas p ON p.parcela_id = l.parcela_id
              WHERE l.dispositivo_mac = $1 AND p.activa`,
             [datos.mac]
         );
         // Mismo mensaje para MAC desconocida y clave incorrecta: no revela qué MAC están registradas
-        if (r.rows.length === 0 || !tokenValido(req.get('x-dispositivo-token'), r.rows[0].dispositivo_token_hash)) {
+        if (r.rows.length === 0 || !tokenValido(req.get('x-dispositivo-token'), r.rows[0].clave_dispositivo_hash)) {
             return res.status(401).json({ status: 'error', message: 'Dispositivo no registrado o clave inválida.' });
         }
         const loteId = r.rows[0].lote_id;
@@ -40,14 +40,16 @@ const recibirTelemetria = async (req, res) => {
 };
 
 /**
- * POST /api/parcelas/:id/dispositivo — vincula un ESP32 (por su MAC) al lote de una parcela propia.
+ * POST /api/parcelas/:id/dispositivo — vincula un ESP32 (por su MAC) a un lote de una parcela propia.
+ * El cuerpo indica el lote (loteId); sin él se usa el primero de la parcela.
  * Devuelve la clave del dispositivo una sola vez: en la base solo queda su hash.
  * Las lecturas simuladas del lote se descartan para que el historial contenga solo datos reales.
  */
 const vincularDispositivo = async (req, res) => {
     const parcelaId = req.params.id;
     const mac = normalizarMac(req.body && req.body.mac);
-    if (!UUID.test(parcelaId)) {
+    const loteElegido = req.body && req.body.loteId ? String(req.body.loteId) : null;
+    if (!UUID.test(parcelaId) || (loteElegido && !UUID.test(loteElegido))) {
         return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
     }
     if (!mac) {
@@ -57,20 +59,20 @@ const vincularDispositivo = async (req, res) => {
     try {
         await client.query('BEGIN');
         const lote = await client.query(
-            `SELECT l.lote_id, l.dispositivo_token_hash
+            `SELECT l.lote_id, l.clave_dispositivo_hash
              FROM lotes l JOIN parcelas p ON p.parcela_id = l.parcela_id
-             WHERE p.parcela_id = $1 AND p.usuario_id = $2 AND p.activa
-             ORDER BY l.fecha_creacion LIMIT 1 FOR UPDATE OF l`,
-            [parcelaId, req.usuario.id]
+             WHERE p.parcela_id = $1 AND p.usuario_id = $2 AND p.activa AND ($3::uuid IS NULL OR l.lote_id = $3)
+             ORDER BY l.nombre_lote LIMIT 1 FOR UPDATE OF l`,
+            [parcelaId, req.usuario.id, loteElegido]
         );
         if (lote.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ status: 'error', message: 'Parcela no encontrada, sin permisos o sin lote de monitoreo.' });
         }
-        const { lote_id: loteId, dispositivo_token_hash: hashPrevio } = lote.rows[0];
+        const { lote_id: loteId, clave_dispositivo_hash: hashPrevio } = lote.rows[0];
         // Una MAC ficticia del simulador no debe impedir registrar un dispositivo real con esa MAC
         await client.query(
-            'UPDATE lotes SET dispositivo_mac = NULL WHERE dispositivo_mac = $1 AND dispositivo_token_hash IS NULL AND lote_id <> $2',
+            'UPDATE lotes SET dispositivo_mac = NULL WHERE dispositivo_mac = $1 AND clave_dispositivo_hash IS NULL AND lote_id <> $2',
             [mac, loteId]
         );
         if (!hashPrevio) {
@@ -79,14 +81,14 @@ const vincularDispositivo = async (req, res) => {
         }
         const token = generarToken();
         await client.query(
-            'UPDATE lotes SET dispositivo_mac = $1, dispositivo_token_hash = $2, ultima_sincronizacion = NULL WHERE lote_id = $3',
+            'UPDATE lotes SET dispositivo_mac = $1, clave_dispositivo_hash = $2, ultima_sincronizacion = NULL WHERE lote_id = $3',
             [mac, hashToken(token), loteId]
         );
         await client.query('COMMIT');
         res.status(200).json({
             status: 'success',
             message: 'Sensor vinculado. Copie la clave en el firmware del nodo: no se volverá a mostrar.',
-            data: { mac, token },
+            data: { mac, token, loteId },
         });
     } catch (error) {
         await client.query('ROLLBACK');
@@ -100,22 +102,26 @@ const vincularDispositivo = async (req, res) => {
     }
 };
 
-/** DELETE /api/parcelas/:id/dispositivo — desvincula el nodo; el lote vuelve al simulador y conserva sus lecturas. */
+/**
+ * DELETE /api/parcelas/:id/dispositivo?loteId= — desvincula el nodo del lote (sin loteId, de todos los lotes);
+ * el lote vuelve al simulador y conserva sus lecturas.
+ */
 const desvincularDispositivo = async (req, res) => {
     const parcelaId = req.params.id;
-    if (!UUID.test(parcelaId)) {
+    const loteElegido = req.query.loteId ? String(req.query.loteId) : null;
+    if (!UUID.test(parcelaId) || (loteElegido && !UUID.test(loteElegido))) {
         return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
     }
     try {
         const r = await db.query(
-            `UPDATE lotes l SET dispositivo_mac = NULL, dispositivo_token_hash = NULL
+            `UPDATE lotes l SET dispositivo_mac = NULL, clave_dispositivo_hash = NULL
              FROM parcelas p
              WHERE p.parcela_id = l.parcela_id AND p.parcela_id = $1 AND p.usuario_id = $2 AND p.activa
-               AND l.dispositivo_token_hash IS NOT NULL`,
-            [parcelaId, req.usuario.id]
+               AND l.clave_dispositivo_hash IS NOT NULL AND ($3::uuid IS NULL OR l.lote_id = $3)`,
+            [parcelaId, req.usuario.id, loteElegido]
         );
         if (r.rowCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'La parcela no tiene un sensor vinculado.' });
+            return res.status(404).json({ status: 'error', message: 'El lote no tiene un sensor vinculado.' });
         }
         res.status(200).json({ status: 'success', message: 'Sensor desvinculado.' });
     } catch (error) {

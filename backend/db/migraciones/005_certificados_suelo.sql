@@ -14,6 +14,6 @@ ALTER TABLE public.reportes ADD COLUMN IF NOT EXISTS diagnostico text;
 ALTER TABLE public.reportes ADD COLUMN IF NOT EXISTS detalle jsonb;
 ALTER TABLE public.reportes ADD COLUMN IF NOT EXISTS emitido_por uuid REFERENCES public.usuarios(usuario_id);
 
-CREATE INDEX IF NOT EXISTS idx_reportes_lote_fecha ON public.reportes USING btree (lote_id, fecha_generacion DESC);
+CREATE INDEX IF NOT EXISTS indice_reportes_lote_fecha ON public.reportes USING btree (lote_id, fecha_generacion DESC);
 
 COMMENT ON TABLE public.reportes IS 'Certificados de suelo emitidos a partir de una lectura y del motor de reglas del CIAT.';

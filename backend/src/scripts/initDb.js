@@ -46,7 +46,7 @@ async function initDb() {
         }
         // La secuencia debe continuar después de los IDs fijos del catálogo
         await client.query(
-            "SELECT setval('tipos_cultivo_tipo_cultivo_id_seq', (SELECT MAX(tipo_cultivo_id) FROM tipos_cultivo))"
+            "SELECT setval(pg_get_serial_sequence('tipos_cultivo', 'tipo_cultivo_id'), (SELECT MAX(tipo_cultivo_id) FROM tipos_cultivo))"
         );
         console.log(`Catálogo sincronizado: ${ciatCrops.length} cultivos del CIAT.`);
     } finally {

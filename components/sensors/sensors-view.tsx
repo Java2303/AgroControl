@@ -64,13 +64,15 @@ export function SensorsView() {
   const grupos = useMemo<GrupoParcela[]>(() => {
     const porParcela = new Map<string, GrupoParcela>()
     for (const r of readings) {
-      const grupo = porParcela.get(r.parcelId) ?? {
-        parcelId: r.parcelId, parcelName: r.parcelName, lecturas: [], estado: 'optimo' as SoilStatus, ultimaLectura: r.lastUpdate,
+      // Un grupo por lote: en una parcela dividida, cada lote tiene su propio nodo (parcelName ya incluye el lote)
+      const clave = r.loteId ?? r.parcelId
+      const grupo = porParcela.get(clave) ?? {
+        parcelId: clave, parcelName: r.parcelName, lecturas: [], estado: 'optimo' as SoilStatus, ultimaLectura: r.lastUpdate,
       }
       grupo.lecturas.push(r)
       grupo.estado = peorEstado([grupo.estado, r.status])
       if (r.lastUpdate > grupo.ultimaLectura) grupo.ultimaLectura = r.lastUpdate
-      porParcela.set(r.parcelId, grupo)
+      porParcela.set(clave, grupo)
     }
     // Primero las parcelas que requieren atención
     const orden: Record<SoilStatus, number> = { critico: 0, alerta: 1, optimo: 2 }

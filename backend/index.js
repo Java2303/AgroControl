@@ -14,6 +14,7 @@ const actividadesRoutes = require('./src/routes/actividadesRoutes');
 const historialRoutes = require('./src/routes/historialRoutes');
 const telemetriaRoutes = require('./src/routes/telemetriaRoutes');
 const certificadosRoutes = require('./src/routes/certificadosRoutes');
+const usuariosRoutes = require('./src/routes/usuariosRoutes');
 const { startSimulator } = require('./src/services/sensorSimulator');
 // Sin un secreto robusto cualquiera podria firmar tokens validos
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -55,6 +56,7 @@ app.use('/api', actividadesRoutes);
 app.use('/api', historialRoutes);
 app.use('/api', telemetriaRoutes);
 app.use('/api', certificadosRoutes);
+app.use('/api', usuariosRoutes);
 
 // Health check de Render
 app.get('/test-db', async (req, res) => {

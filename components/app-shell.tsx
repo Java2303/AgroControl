@@ -14,6 +14,7 @@ import { ParcelsView } from '@/components/parcels/parcels-view'
 import { SensorsView } from '@/components/sensors/sensors-view'
 import { SettingsView } from '@/components/settings/settings-view'
 import { HistoryView } from '@/components/history/history-view'
+import { UsersView } from '@/components/users/users-view'
 
 export function AppShell() {
   const { state } = useApp()
@@ -57,6 +58,7 @@ export function AppShell() {
           {state.currentView === 'parcels' && <ParcelsView />}
           {state.currentView === 'sensors' && <SensorsView />}
           {state.currentView === 'history' && <HistoryView />}
+          {state.currentView === 'users' && state.user?.userType === 'admin_ciat' && <UsersView />}
           {state.currentView === 'settings' && <SettingsView />}
         </div>
       </main>

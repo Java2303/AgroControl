@@ -3,7 +3,7 @@
 import { toast } from 'sonner'
 import { useMemo, useState } from 'react'
 import { useApp } from '@/lib/app-context'
-import type { CertificadoSuelo, Parcel } from '@/lib/types'
+import type { CertificadoSuelo, Lote, Parcel } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,6 +43,8 @@ export function ParcelsView() {
   const [parcelaBitacora, setParcelaBitacora] = useState<Parcel | null>(null)
   const [certificado, setCertificado] = useState<{ parcela: Parcel; cargando: boolean; error: string | null; cert: CertificadoSuelo | null } | null>(null)
   const [parcelaSensor, setParcelaSensor] = useState<Parcel | null>(null)
+  const [loteSensorId, setLoteSensorId] = useState<string | null>(null)
+  const loteSensor = parcelaSensor?.lotes.find((l) => l.id === loteSensorId) ?? null
   const [sensor, setSensor] = useState<{ mac: string; guardando: boolean; error: string | null; token: string | null; copiado: boolean }>({ mac: '', guardando: false, error: null, token: null, copiado: false })
   // Matriz de permisos (Cuadro 3.36): el productor solo consulta (parcelas, sensores, bitácora y certificados)
   const puedeRegistrarLabores = state.user?.userType !== 'productor'
@@ -107,11 +109,19 @@ export function ParcelsView() {
     }
   }
 
-  // RF-18: el certificado se emite con la última lectura del lote y queda registrado con su código
-  const emitirCertificado = async (parcel: Parcel) => {
+  // RF-18: el certificado se emite con la última lectura de un lote y queda registrado con su código.
+  // Con varios lotes, primero se elige cuál (el diálogo muestra los lotes mientras no haya uno elegido).
+  const emitirCertificado = async (parcel: Parcel, loteId?: string) => {
+    if (!loteId && parcel.lotes.length > 1) {
+      setCertificado({ parcela: parcel, cargando: false, error: null, cert: null })
+      return
+    }
     setCertificado({ parcela: parcel, cargando: true, error: null, cert: null })
     try {
-      const r = await apiFetch<{ data: CertificadoSuelo }>(`/parcelas/${parcel.id}/certificado`, { method: 'POST' })
+      const r = await apiFetch<{ data: CertificadoSuelo }>(`/parcelas/${parcel.id}/certificado`, {
+        method: 'POST',
+        body: JSON.stringify({ loteId: loteId ?? parcel.lotes[0]?.id }),
+      })
       setCertificado({ parcela: parcel, cargando: false, error: null, cert: r.data })
       toast.success('Certificado Emitido', { description: r.data.codigo })
     } catch (err) {
@@ -119,22 +129,35 @@ export function ParcelsView() {
     }
   }
 
+  const elegirLoteSensor = (parcel: Parcel, loteId: string | null) => {
+    const lote = parcel.lotes.find((l) => l.id === loteId)
+    setLoteSensorId(loteId)
+    setSensor({ mac: lote?.sensorMac ?? '', guardando: false, error: null, token: null, copiado: false })
+  }
+
   const abrirSensor = (parcel: Parcel) => {
-    setSensor({ mac: parcel.sensorMac ?? '', guardando: false, error: null, token: null, copiado: false })
     setParcelaSensor(parcel)
+    elegirLoteSensor(parcel, parcel.lotes[0]?.id ?? null)
+  }
+
+  // Aplica el cambio de nodo a un lote y recalcula el indicador de sensor de la parcela
+  const actualizarLote = (parcela: Parcel, loteId: string, sensorMac: string | null): Parcel => {
+    const lotes = parcela.lotes.map((l) => (l.id === loteId ? { ...l, sensorMac, sensorUltimaLectura: null } : l))
+    return { ...parcela, lotes, sensorMac: lotes.find((l) => l.sensorMac)?.sensorMac ?? null }
   }
 
   // Vincula el nodo ESP32 por su MAC; la API devuelve la clave del dispositivo una sola vez
   const vincularSensor = async () => {
-    if (!parcelaSensor) return
+    if (!parcelaSensor || !loteSensorId) return
     setSensor((s) => ({ ...s, guardando: true, error: null }))
     try {
       const r = await apiFetch<{ data: { mac: string; token: string } }>(`/parcelas/${parcelaSensor.id}/dispositivo`, {
         method: 'POST',
-        body: JSON.stringify({ mac: sensor.mac }),
+        body: JSON.stringify({ mac: sensor.mac, loteId: loteSensorId }),
       })
-      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: r.data.mac, sensorUltimaLectura: null } : p)))
-      setParcelaSensor({ ...parcelaSensor, sensorMac: r.data.mac, sensorUltimaLectura: null })
+      const actualizada = actualizarLote(parcelaSensor, loteSensorId, r.data.mac)
+      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? actualizada : p)))
+      setParcelaSensor(actualizada)
       setSensor((s) => ({ ...s, guardando: false, token: r.data.token, mac: r.data.mac }))
       toast.success('Sensor Vinculado')
     } catch (err) {
@@ -143,11 +166,11 @@ export function ParcelsView() {
   }
 
   const desvincularSensor = async () => {
-    if (!parcelaSensor) return
+    if (!parcelaSensor || !loteSensorId) return
     setSensor((s) => ({ ...s, guardando: true, error: null }))
     try {
-      await apiFetch(`/parcelas/${parcelaSensor.id}/dispositivo`, { method: 'DELETE' })
-      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? { ...p, sensorMac: null, sensorUltimaLectura: null } : p)))
+      await apiFetch(`/parcelas/${parcelaSensor.id}/dispositivo?loteId=${loteSensorId}`, { method: 'DELETE' })
+      setParcels(parcels.map((p) => (p.id === parcelaSensor.id ? actualizarLote(p, loteSensorId, null) : p)))
       setParcelaSensor(null)
       toast.success('Sensor Desvinculado')
     } catch (err) {
@@ -282,6 +305,12 @@ export function ParcelsView() {
                       <span className="material-symbols-outlined text-base">location_on</span>
                       {parcel.ubicacion_nombre || 'Ubicación no registrada'}
                     </p>
+                    {parcel.lotes.length > 1 && (
+                      <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
+                        <span className="material-symbols-outlined text-sm">grid_view</span>
+                        {parcel.lotes.length} lotes de monitoreo de {parcel.lotes[0].superficie.toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha
+                      </p>
+                    )}
                     {parcel.propia === false && parcel.responsable && (
                       <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
                         <span className="material-symbols-outlined text-sm">person</span>
@@ -469,6 +498,16 @@ export function ParcelsView() {
               «{certificado?.parcela.name}», con la última lectura del lote y la tabla de interpretación del CIAT.
             </DialogDescription>
           </DialogHeader>
+          {certificado && !certificado.cargando && !certificado.cert && !certificado.error && (
+            <div className="space-y-2 py-2">
+              <p className="text-sm font-semibold text-on-surface">¿De qué lote?</p>
+              <LotesSelector
+                lotes={certificado.parcela.lotes}
+                elegido={null}
+                onElegir={(id) => emitirCertificado(certificado.parcela, id)}
+              />
+            </div>
+          )}
           {certificado?.cargando && <p className="text-sm text-on-surface-variant py-2">Emitiendo el certificado…</p>}
           {certificado?.error && <p className="text-sm text-[var(--error)] py-2">{certificado.error}</p>}
           {certificado?.cert && (
@@ -482,6 +521,9 @@ export function ParcelsView() {
                   {certificado.cert.calificacion}
                 </span>
               </div>
+              {certificado.cert.lote.nombre && certificado.parcela.lotes.length > 1 && (
+                <p className="text-xs text-on-surface-variant">{certificado.cert.lote.nombre} · {certificado.cert.lote.superficieHa} ha</p>
+              )}
               <p>{certificado.cert.diagnostico}</p>
               <p className="text-xs text-on-surface-variant">Origen de la lectura: {certificado.cert.origen}</p>
             </div>
@@ -503,10 +545,10 @@ export function ParcelsView() {
       <Dialog open={!!parcelaSensor} onOpenChange={(abierto) => { if (!abierto) setParcelaSensor(null) }}>
         <DialogContent className="sm:max-w-md border-0 shadow-elevated">
           <DialogHeader>
-            <DialogTitle className="text-headline text-on-surface">Sensor de la Parcela</DialogTitle>
+            <DialogTitle className="text-headline text-on-surface">Sensor del Lote</DialogTitle>
             <DialogDescription className="text-on-surface-variant">
-              Vincule el nodo ESP32 de «{parcelaSensor?.name}» con su dirección MAC. Desde entonces la parcela recibe lecturas reales
-              y el simulador deja de escribir en ella.
+              Vincule el nodo ESP32 de un lote de «{parcelaSensor?.name}» con su dirección MAC. Desde entonces el lote recibe lecturas
+              reales y el simulador deja de escribir en él.
             </DialogDescription>
           </DialogHeader>
           {sensor.token ? (
@@ -525,11 +567,14 @@ export function ParcelsView() {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              {parcelaSensor?.sensorMac && (
+              {parcelaSensor && parcelaSensor.lotes.length > 1 && (
+                <LotesSelector lotes={parcelaSensor.lotes} elegido={loteSensorId} onElegir={(id) => elegirLoteSensor(parcelaSensor, id)} />
+              )}
+              {loteSensor?.sensorMac && (
                 <div className="bg-success-container rounded-lg p-3 text-sm text-on-surface">
-                  <p>Vinculado: <span className="font-mono font-semibold">{parcelaSensor.sensorMac}</span></p>
+                  <p>Vinculado: <span className="font-mono font-semibold">{loteSensor.sensorMac}</span></p>
                   <p className="text-on-surface-variant mt-0.5">
-                    Última lectura: {parcelaSensor.sensorUltimaLectura ? new Date(parcelaSensor.sensorUltimaLectura).toLocaleString('es-BO') : 'todavía no recibida'}
+                    Última lectura: {loteSensor.sensorUltimaLectura ? new Date(loteSensor.sensorUltimaLectura).toLocaleString('es-BO') : 'todavía no recibida'}
                   </p>
                 </div>
               )}
@@ -551,7 +596,7 @@ export function ParcelsView() {
               <Button onClick={() => setParcelaSensor(null)} className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0">Listo</Button>
             ) : (
               <>
-                {parcelaSensor?.sensorMac && (
+                {loteSensor?.sensorMac && (
                   <Button variant="outline" onClick={desvincularSensor} disabled={sensor.guardando} className="bg-surface-high border-0 hover:bg-error-container hover:text-[var(--error)] mr-auto">
                     Desvincular
                   </Button>
@@ -559,10 +604,10 @@ export function ParcelsView() {
                 <Button variant="outline" onClick={() => setParcelaSensor(null)} className="bg-surface-high border-0">Cancelar</Button>
                 <Button
                   onClick={vincularSensor}
-                  disabled={sensor.guardando || !sensor.mac.trim()}
+                  disabled={sensor.guardando || !sensor.mac.trim() || !loteSensorId}
                   className="bg-[var(--tertiary)] text-[var(--on-tertiary-fixed)] hover:bg-[var(--tertiary-fixed-dim)] border-0"
                 >
-                  {sensor.guardando ? 'Guardando…' : parcelaSensor?.sensorMac ? 'Generar Nueva Clave' : 'Vincular'}
+                  {sensor.guardando ? 'Guardando…' : loteSensor?.sensorMac ? 'Generar Nueva Clave' : 'Vincular'}
                 </Button>
               </>
             )}
@@ -620,6 +665,30 @@ export function ParcelsView() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+/** Lotes de una parcela como botones: muestra la superficie y si el lote ya tiene un nodo vinculado. */
+function LotesSelector({ lotes, elegido, onElegir }: { lotes: Lote[]; elegido: string | null; onElegir: (id: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Lote">
+      {lotes.map((l) => (
+        <button
+          key={l.id}
+          type="button"
+          role="radio"
+          aria-checked={elegido === l.id}
+          onClick={() => onElegir(l.id)}
+          className={`text-left rounded-lg p-3 transition-smooth ${elegido === l.id ? 'bg-[var(--tertiary-container)] ring-2 ring-[var(--tertiary)]' : 'bg-surface-high hover:bg-surface-container'}`}
+        >
+          <span className="block text-sm font-semibold text-on-surface">{l.nombre}</span>
+          <span className="flex items-center gap-1 text-xs text-on-surface-variant mt-0.5">
+            {l.superficie.toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha
+            {l.sensorMac && <><span aria-hidden>·</span><span className="material-symbols-outlined text-sm text-[var(--success)]">sensors</span>Nodo</>}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }

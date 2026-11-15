@@ -42,7 +42,7 @@ const authController = {
 
         try {
             const usuarioExistente = await db.query(
-                'SELECT 1 FROM usuarios WHERE LOWER(email) = $1 OR ci_nit = $2',
+                'SELECT 1 FROM usuarios WHERE LOWER(correo) = $1 OR ci_nit = $2',
                 [emailNormalizado, ci_nit.trim()]
             );
 
@@ -56,7 +56,7 @@ const authController = {
             const passwordHash = await bcrypt.hash(password, salt);
 
             const query = `
-                INSERT INTO usuarios (nombre_completo, email, password_hash, telefono, ci_nit, rol)
+                INSERT INTO usuarios (nombre_completo, correo, contrasena_hash, telefono, ci_nit, rol)
                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING usuario_id;
             `;
             const values = [nombre_completo.trim(), emailNormalizado, passwordHash, telefono || null, ci_nit.trim(), rol];
@@ -81,14 +81,14 @@ const authController = {
 
         try {
             const result = await db.query(
-                'SELECT usuario_id, nombre_completo, email, password_hash, rol, ci_nit FROM usuarios WHERE LOWER(email) = $1',
+                'SELECT usuario_id, nombre_completo, correo, contrasena_hash, rol, ci_nit FROM usuarios WHERE LOWER(correo) = $1 AND activo IS NOT FALSE',
                 [email.trim().toLowerCase()]
             );
             const usuario = result.rows[0];
 
             // Se compara siempre, aunque el correo no exista, para no revelar
             // por tiempo de respuesta ni por mensaje si está registrado (PT-S5).
-            const validPassword = await bcrypt.compare(password, usuario ? usuario.password_hash : HASH_RELLENO);
+            const validPassword = await bcrypt.compare(password, usuario ? usuario.contrasena_hash : HASH_RELLENO);
             
             if (!usuario || !validPassword) {
                 return res.status(401).json({ message: "Correo o contraseña incorrectos." });
@@ -106,7 +106,7 @@ const authController = {
                 user: {
                     id: usuario.usuario_id,
                     nombre: usuario.nombre_completo,
-                    email: usuario.email,
+                    email: usuario.correo,
                     rol: usuario.rol,
                     ci_nit: usuario.ci_nit
                 }

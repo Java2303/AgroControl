@@ -1,35 +1,21 @@
 const db = require('../config/db');
 
-// Cobertura máxima de un nodo sensor (restricción check_cobertura_sensor de la tabla lotes)
-const SUPERFICIE_MAX_LOTE = 15;
-
 const simulateSensors = async () => {
     try {
-        // Las parcelas con un nodo ESP32 vinculado reciben lecturas reales por POST /api/telemetria
-        const resParcelas = await db.query(
-            `SELECT parcela_id, nombre, area_hectareas FROM parcelas p
-             WHERE activa AND NOT EXISTS (SELECT 1 FROM lotes l WHERE l.parcela_id = p.parcela_id AND l.dispositivo_token_hash IS NOT NULL)`
+        // Parcelas registradas sin lotes (p. ej. cargadas a mano en la base)
+        await db.query(
+            `SELECT public.crear_lotes_de_parcela(parcela_id) FROM parcelas p
+             WHERE activa AND NOT EXISTS (SELECT 1 FROM lotes l WHERE l.parcela_id = p.parcela_id)`
         );
-        const parcelas = resParcelas.rows;
+        // Los lotes con un nodo ESP32 vinculado reciben lecturas reales por POST /api/telemetria
+        const resLotes = await db.query(
+            `SELECT l.lote_id, l.nombre_lote, p.nombre FROM lotes l JOIN parcelas p ON p.parcela_id = l.parcela_id
+             WHERE p.activa AND l.clave_dispositivo_hash IS NULL`
+        );
 
-        for (const parcela of parcelas) {
-          // Un error en una parcela no debe detener la simulación de las demás
+        for (const { lote_id: loteId, nombre_lote, nombre } of resLotes.rows) {
+          // Un error en un lote no debe detener la simulación de los demás
           try {
-            let resLote = await db.query('SELECT lote_id FROM lotes WHERE parcela_id = $1 LIMIT 1', [parcela.parcela_id]);
-            let loteId;
-
-            if (resLote.rows.length === 0) {
-                const macRandom = `00:1A:C2:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}`;
-                const insertLote = await db.query(
-                    `INSERT INTO lotes (parcela_id, nombre_lote, descripcion, superficie_ha, dispositivo_mac)
-                     VALUES ($1, $2, $3, $4, $5) RETURNING lote_id`,
-                    [parcela.parcela_id, `Lote Principal - ${parcela.nombre}`, `Lote de monitoreo para ${parcela.nombre}`, Math.min(parseFloat(parcela.area_hectareas), SUPERFICIE_MAX_LOTE), macRandom]
-                );
-                loteId = insertLote.rows[0].lote_id;
-                console.log(`[Simulador] Creado lote principal para parcela ${parcela.nombre}`);
-            } else {
-                loteId = resLote.rows[0].lote_id;
-            }
 
             const humedad = parseFloat((Math.random() * 30 + 45).toFixed(1)); // 45% - 75%
             const temperatura = parseFloat((Math.random() * 12 + 18).toFixed(1)); // 18°C - 30°C
@@ -45,7 +31,7 @@ const simulateSensors = async () => {
                 [loteId, nitrogeno, fosforo, potasio, ph, humedad, temperatura, ec]
             );
           } catch (errParcela) {
-            console.error(`[Simulador] Error en la parcela ${parcela.nombre}:`, errParcela.message);
+            console.error(`[Simulador] Error en ${nombre} (${nombre_lote}):`, errParcela.message);
           }
         }
 
@@ -60,7 +46,7 @@ const simulateSensors = async () => {
                 ) t
                 WHERE t.rn <= 50
             )
-            AND lote_id IN (SELECT lote_id FROM lotes WHERE dispositivo_token_hash IS NULL)
+            AND lote_id IN (SELECT lote_id FROM lotes WHERE clave_dispositivo_hash IS NULL)
             AND lectura_id NOT IN (SELECT lectura_id FROM reportes)  -- la lectura de un certificado se conserva
         `);
 

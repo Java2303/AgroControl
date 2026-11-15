@@ -3,7 +3,7 @@ const { generarRecomendacionesReglas } = require('../services/motorReglas');
 
 /**
  * Devuelve las recomendaciones del motor de reglas determinista
- * a partir de la última lectura de cada parcela del usuario.
+ * a partir de la última lectura de cada lote de las parcelas del usuario.
  */
 const obtenerRecomendaciones = async (req, res) => {
   try {
@@ -13,7 +13,7 @@ const obtenerRecomendaciones = async (req, res) => {
 
     const query = `
       SELECT
-        p.nombre AS "parcelName",
+        p.nombre || CASE WHEN (SELECT COUNT(*) FROM lotes x WHERE x.parcela_id = p.parcela_id) > 1 THEN ' · ' || l.nombre_lote ELSE '' END AS "parcelName",
         ls.humedad_suelo AS humidity,
         ls.ph AS ph,
         ls.nitrogeno AS nitrogen,

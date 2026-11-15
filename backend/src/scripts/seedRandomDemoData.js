@@ -130,11 +130,11 @@ async function seedRandomData() {
     //    Uso: node src/scripts/seedRandomDemoData.js [correo1 correo2 ...]
     const correos = process.argv.slice(2).map(c => c.toLowerCase());
     const userRes = correos.length > 0
-      ? await pool.query('SELECT usuario_id, email, nombre_completo, rol FROM usuarios WHERE LOWER(email) = ANY($1);', [correos])
-      : await pool.query('SELECT usuario_id, email, nombre_completo, rol FROM usuarios;');
+      ? await pool.query('SELECT usuario_id, correo, nombre_completo, rol FROM usuarios WHERE LOWER(correo) = ANY($1);', [correos])
+      : await pool.query('SELECT usuario_id, correo, nombre_completo, rol FROM usuarios;');
     // Las labores las registra un agrónomo (Cuadro 3.36); se usa para las parcelas de productores
     const agronomoDemo = (await pool.query(
-      "SELECT usuario_id FROM usuarios WHERE rol IN ('agronomo', 'admin_ciat') ORDER BY (email = 'agronomo@agrocontrol.bo') DESC, fecha_registro LIMIT 1"
+      "SELECT usuario_id FROM usuarios WHERE rol IN ('agronomo', 'admin_ciat') ORDER BY (correo = 'agronomo@agrocontrol.bo') DESC, fecha_registro LIMIT 1"
     )).rows[0]?.usuario_id;
     if (userRes.rows.length === 0) {
       console.log('No se encontraron usuarios en la BD.');
@@ -145,7 +145,7 @@ async function seedRandomData() {
     console.log(`Poblando datos de ejemplo para ${usuarios.length} usuario(s)...`);
 
     for (const user of usuarios) {
-      console.log(`\n> Configurando datos para usuario: ${user.email} (${user.nombre_completo})...`);
+      console.log(`\n> Configurando datos para usuario: ${user.correo} (${user.nombre_completo})...`);
 
       for (const p of sampleParcels) {
         const existing = await pool.query(
@@ -158,7 +158,7 @@ async function seedRandomData() {
 
         if (existing.rows.length === 0) {
           const insertParcela = await pool.query(`
-            INSERT INTO parcelas (usuario_id, nombre, ubicacion_nombre, tipo_cultivo_id, area_hectareas, geom)
+            INSERT INTO parcelas (usuario_id, nombre, ubicacion_nombre, tipo_cultivo_id, area_hectareas, geometria)
             VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromGeoJSON($6), 4326))
             RETURNING parcela_id;
           `, [user.usuario_id, p.nombre, p.ubicacion_nombre, p.tipo_cultivo_id, p.area_hectareas, JSON.stringify(geomObj)]);
@@ -169,27 +169,11 @@ async function seedRandomData() {
           parcelaId = existing.rows[0].parcela_id;
         }
 
-        const existingLote = await pool.query(
-          'SELECT lote_id FROM lotes WHERE parcela_id = $1 LIMIT 1',
-          [parcelaId]
-        );
+        await pool.query('SELECT public.crear_lotes_de_parcela($1)', [parcelaId]);
+        const lotes = await pool.query('SELECT lote_id FROM lotes WHERE parcela_id = $1', [parcelaId]);
 
-        let loteId;
-        if (existingLote.rows.length === 0) {
-          const mac = `00:1A:C2:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}:${Math.floor(Math.random() * 89 + 10)}`;
-          const insertLote = await pool.query(`
-            INSERT INTO lotes (parcela_id, nombre_lote, descripcion, superficie_ha, dispositivo_mac)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING lote_id;
-          `, [parcelaId, `Lote Principal - ${p.nombre}`, `Lote de telemetría IoT para ${p.nombre}`, p.area_hectareas, mac]);
-          
-          loteId = insertLote.rows[0].lote_id;
-        } else {
-          loteId = existingLote.rows[0].lote_id;
-        }
-
-        // Generar 12 lecturas históricas con variaciones realistas
-        for (let i = 11; i >= 0; i--) {
+        // 12 lecturas históricas por lote con variaciones realistas
+        for (const { lote_id: loteId } of lotes.rows) for (let i = 11; i >= 0; i--) {
           const timestamp = new Date(Date.now() - i * 1800000); // Cada 30 minutos
           
           const humedad = parseFloat((Math.random() * 25 + 50).toFixed(1)); // 50% - 75%

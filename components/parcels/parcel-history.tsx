@@ -74,7 +74,8 @@ function DetalleEventoSistema({ actividad }: { actividad: Actividad }) {
     ['Cultivo', d.cultivo],
     ['Superficie', d.area_ha !== undefined ? `${Number(d.area_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
     ['Ubicación', d.ubicacion],
-    ['Lote de Monitoreo', d.lote_ha !== undefined ? `${Number(d.lote_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
+    ['Lotes de Monitoreo', d.lotes !== undefined ? String(d.lotes)
+      : d.lote_ha !== undefined ? `${Number(d.lote_ha).toLocaleString('es-BO', { maximumFractionDigits: 2 })} ha` : null],
   ].filter(([, v]) => v)
   return (
     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">

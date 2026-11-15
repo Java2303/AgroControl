@@ -77,6 +77,7 @@ export function HistoryView() {
     soilStatus: 'optimo',
     ubicacion_nombre: abierta.ubicacion_nombre ?? undefined,
     createdAt: abierta.createdAt,
+    lotes: [],
     activa: abierta.activa,
     fechaBaja: abierta.fechaBaja,
     motivoBajaTexto: abierta.motivoBajaTexto,

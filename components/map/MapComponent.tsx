@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Polygon, CircleMarker, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import L, { LeafletMouseEvent } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -172,6 +172,7 @@ export function MapComponent({
         const enfocada = parcel.id === focusId
 
         return (
+          <Fragment key={parcel.id}>
           <Polygon 
             key={parcel.id}
             ref={(capa) => {
@@ -217,10 +218,26 @@ export function MapComponent({
                     <span className="material-symbols-outlined text-[18px] mr-2 text-[var(--primary-container)]">aspect_ratio</span>
                     <span><strong>Superficie:</strong> {parcel.area} ha</span>
                   </p>
+                  {parcel.lotes?.length > 1 && (
+                    <p className="flex items-center">
+                      <span className="material-symbols-outlined text-[18px] mr-2 text-gray-400">grid_view</span>
+                      <span><strong>Lotes:</strong> {parcel.lotes.length} de {parcel.lotes[0].superficie} ha</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </Popup>
           </Polygon>
+          {/* Límites de los lotes (RN-03): solo se dibujan; los clics siguen yendo a la parcela */}
+          {parcel.lotes?.length > 1 && parcel.lotes.map((lote: { id: string; coordinates: MapPoint[] }) => lote.coordinates.length >= 3 && (
+            <Polygon
+              key={lote.id}
+              positions={lote.coordinates.map((p: MapPoint) => [p.lat, p.lng])}
+              interactive={false}
+              pathOptions={{ color: '#ffffff', weight: 1.5, dashArray: '6 6', fill: false }}
+            />
+          ))}
+          </Fragment>
         )
       })}
     </MapContainer>

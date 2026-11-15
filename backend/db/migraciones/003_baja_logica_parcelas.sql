@@ -17,7 +17,7 @@ ALTER TABLE public.parcelas ADD CONSTRAINT parcela_motivo_baja_valido CHECK (
     motivo_baja IS NULL OR motivo_baja IN ('terreno_cerrado', 'fin_campania', 'venta_cesion', 'error_registro', 'otro')
 );
 
-CREATE INDEX IF NOT EXISTS idx_parcelas_usuario_activa ON public.parcelas USING btree (usuario_id, activa);
+CREATE INDEX IF NOT EXISTS indice_parcelas_usuario_activa ON public.parcelas USING btree (usuario_id, activa);
 
 ALTER TABLE public.actividades_parcela DROP CONSTRAINT IF EXISTS actividad_tipo_valido;
 ALTER TABLE public.actividades_parcela ADD CONSTRAINT actividad_tipo_valido CHECK (tipo IN (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api-client'
 import { useApp } from '@/lib/app-context'
-import type { MapPoint, Parcel } from '@/lib/types'
+import type { Lote, MapPoint, Parcel } from '@/lib/types'
 
 interface ParcelaApi {
   id: string
@@ -13,18 +13,25 @@ interface ParcelaApi {
   area: string | number
   createdAt?: string
   geom?: string | { coordinates?: number[][][] }
-  sensorMac?: string | null
-  sensorUltimaLectura?: string | null
   propia?: boolean
   responsable?: string
+  lotes?: {
+    id: string
+    nombre: string
+    superficie: string | number
+    geometria: { type: string; coordinates: number[][][] | number[][][][] } | null
+    sensorMac: string | null
+    sensorUltimaLectura: string | null
+  }[]
 }
 
-/** Convierte el GeoJSON (Polygon) de PostGIS en vértices lat/lng sin el punto de cierre. */
-function geomACoordenadas(geom: ParcelaApi['geom']): MapPoint[] {
+/** Convierte el GeoJSON (Polygon o el primer polígono de un MultiPolygon) en vértices lat/lng sin el punto de cierre. */
+function geomACoordenadas(geom: ParcelaApi['geom'] | { type: string; coordinates: unknown } | null): MapPoint[] {
   if (!geom) return []
   try {
     const geomObj = typeof geom === 'string' ? JSON.parse(geom) : geom
-    const anillo: number[][] | undefined = geomObj?.coordinates?.[0]
+    const poligono = geomObj?.type === 'MultiPolygon' ? geomObj.coordinates?.[0] : geomObj?.coordinates
+    const anillo: number[][] | undefined = poligono?.[0]
     if (!anillo) return []
     const coords = anillo.map(([lng, lat]) => ({ lat, lng }))
     const primero = coords[0]
@@ -37,6 +44,14 @@ function geomACoordenadas(geom: ParcelaApi['geom']): MapPoint[] {
 }
 
 function mapearParcela(p: ParcelaApi): Parcel {
+  const lotes: Lote[] = (p.lotes ?? []).map((l) => ({
+    id: l.id,
+    nombre: l.nombre,
+    superficie: parseFloat(String(l.superficie)),
+    coordinates: geomACoordenadas(l.geometria),
+    sensorMac: l.sensorMac ?? null,
+    sensorUltimaLectura: l.sensorUltimaLectura ?? null,
+  }))
   return {
     id: p.id,
     name: p.nombre,
@@ -46,8 +61,8 @@ function mapearParcela(p: ParcelaApi): Parcel {
     soilStatus: 'optimo',
     coordinates: geomACoordenadas(p.geom),
     createdAt: p.createdAt,
-    sensorMac: p.sensorMac ?? null,
-    sensorUltimaLectura: p.sensorUltimaLectura ?? null,
+    sensorMac: lotes.find((l) => l.sensorMac)?.sensorMac ?? null,
+    lotes,
     propia: p.propia ?? true,
     responsable: p.responsable ?? undefined,
   }

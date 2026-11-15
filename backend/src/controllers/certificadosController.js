@@ -22,24 +22,29 @@ const respuesta = (fila) => ({
 });
 
 /**
- * POST /api/parcelas/:id/certificado — emite el certificado de suelo del lote de una parcela propia
- * a partir de su última lectura (RF-18, RN-14). Cada emisión queda registrada con su código.
+ * POST /api/parcelas/:id/certificado — emite el certificado de suelo de un lote de una parcela propia
+ * (loteId en el cuerpo; sin él, el primer lote) a partir de su última lectura (RF-18, RN-14).
+ * Cada emisión queda registrada con su código.
  */
 const emitirCertificado = async (req, res) => {
     const parcelaId = req.params.id;
-    if (!UUID.test(parcelaId)) {
+    const loteElegido = req.body && req.body.loteId ? String(req.body.loteId) : null;
+    if (!UUID.test(parcelaId) || (loteElegido && !UUID.test(loteElegido))) {
         return res.status(404).json({ status: 'error', message: 'Parcela no encontrada o sin permisos.' });
     }
     try {
         const r = await db.query(
             `SELECT p.nombre, p.ubicacion_nombre, p.area_hectareas, tc.nombre AS cultivo,
-                    l.lote_id, l.superficie_ha, l.dispositivo_mac, l.dispositivo_token_hash IS NOT NULL AS nodo_real,
+                    l.lote_id, l.nombre_lote, l.superficie_ha, l.dispositivo_mac, l.clave_dispositivo_hash IS NOT NULL AS nodo_real,
                     ls.lectura_id, ls.fecha_captura, ls.emulada, ls.humedad_suelo, ls.temperatura_suelo, ls.conductividad_electrica,
                     ls.ph, ls.nitrogeno, ls.fosforo, ls.potasio,
                     co.cantidad AS rendimiento, co.unidad AS rendimiento_unidad, co.fecha AS fecha_cosecha
              FROM parcelas p
              LEFT JOIN tipos_cultivo tc ON tc.tipo_cultivo_id = p.tipo_cultivo_id
-             JOIN LATERAL (SELECT * FROM lotes WHERE parcela_id = p.parcela_id ORDER BY fecha_creacion LIMIT 1) l ON true
+             JOIN LATERAL (
+                 SELECT * FROM lotes WHERE parcela_id = p.parcela_id AND ($3::uuid IS NULL OR lote_id = $3)
+                 ORDER BY nombre_lote LIMIT 1
+             ) l ON true
              LEFT JOIN LATERAL (
                  SELECT * FROM lecturas_suelo WHERE lote_id = l.lote_id ORDER BY fecha_captura DESC LIMIT 1
              ) ls ON true
@@ -49,14 +54,14 @@ const emitirCertificado = async (req, res) => {
                  ORDER BY fecha DESC LIMIT 1
              ) co ON true
              WHERE p.parcela_id = $1 AND p.usuario_id = $2 AND p.activa`,
-            [parcelaId, req.usuario.id]
+            [parcelaId, req.usuario.id, loteElegido]
         );
         if (r.rows.length === 0) {
             return res.status(404).json({ status: 'error', message: 'Parcela no encontrada, sin permisos o dada de baja.' });
         }
         const f = r.rows[0];
         if (!f.lectura_id) {
-            return res.status(409).json({ status: 'error', message: 'La parcela todavía no tiene lecturas: no se puede emitir el certificado.' });
+            return res.status(409).json({ status: 'error', message: 'El lote todavía no tiene lecturas: no se puede emitir el certificado.' });
         }
 
         const lectura = {
@@ -66,11 +71,11 @@ const emitirCertificado = async (req, res) => {
         const d = diagnosticarLectura(lectura);
         const detalle = {
             parcela: { nombre: f.nombre, ubicacion: f.ubicacion_nombre, areaHa: Number(f.area_hectareas), cultivo: f.cultivo },
-            lote: { codigo: `L-${f.lote_id.slice(0, 8).toUpperCase()}`, superficieHa: Number(f.superficie_ha) },
+            lote: { codigo: `L-${f.lote_id.slice(0, 8).toUpperCase()}`, nombre: f.nombre_lote, superficieHa: Number(f.superficie_ha) },
             rendimiento: f.rendimiento != null ? { cantidad: Number(f.rendimiento), unidad: f.rendimiento_unidad, fecha: f.fecha_cosecha } : null,
             lectura: { fecha: f.fecha_captura, ...lectura },
             // RN-10: se declara el origen del dato; una lectura del simulador no se presenta como medición
-            origen: !f.nodo_real ? 'Lectura simulada (la parcela no tiene un nodo IoT vinculado)'
+            origen: !f.nodo_real ? 'Lectura simulada (el lote no tiene un nodo IoT vinculado)'
                 : f.emulada ? `Nodo IoT ${f.dispositivo_mac} con valores emulados (sensor 7 en 1 no conectado)`
                 : `Nodo IoT ${f.dispositivo_mac}`,
             interpretacion: d.interpretacion,

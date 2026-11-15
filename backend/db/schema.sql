@@ -43,10 +43,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
 
 --
--- Name: user_role; Type: TYPE; Schema: public; Owner: -
+-- Name: rol_usuario; Type: TYPE; Schema: public; Owner: -
 --
 
-CREATE TYPE public.user_role AS ENUM (
+CREATE TYPE public.rol_usuario AS ENUM (
     'admin_ciat',
     'agronomo',
     'productor'
@@ -110,18 +110,18 @@ CREATE TABLE public.parcelas (
     usuario_id uuid NOT NULL,
     nombre character varying(100) NOT NULL,
     ubicacion_nombre character varying(255),
-    geom public.geometry(Polygon,4326) NOT NULL,
+    geometria public.geometry(Polygon,4326) NOT NULL,
     area_hectareas numeric(10,2) NOT NULL,
     fecha_creacion timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     tipo_cultivo_id integer,
-    CONSTRAINT limite_superficie CHECK ((public.st_area((geom)::public.geography) <= (500000)::double precision))
+    CONSTRAINT limite_superficie CHECK ((public.st_area((geometria)::public.geography) <= (500000)::double precision))
 );
 
 --
--- Name: COLUMN parcelas.geom; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN parcelas.geometria; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.parcelas.geom IS 'Almacena el polígono georreferenciado de la parcela dibujada por el agrónomo.';
+COMMENT ON COLUMN public.parcelas.geometria IS 'Almacena el polígono georreferenciado de la parcela dibujada por el agrónomo.';
 
 --
 -- Name: reportes; Type: TABLE; Schema: public; Owner: -
@@ -132,8 +132,7 @@ CREATE TABLE public.reportes (
     lote_id uuid NOT NULL,
     lectura_id uuid NOT NULL,
     calificacion_global character varying(50),
-    nivel_confianza numeric(5,2),
-    recomendacion_ia text,
+    recomendacion text,
     fecha_generacion timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     codigo_verificacion character varying(20)
 );
@@ -142,7 +141,7 @@ CREATE TABLE public.reportes (
 -- Name: TABLE reportes; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.reportes IS 'Almacena los informes técnicos generados tras procesar los datos IoT con el Motor de Reglas y la IA.';
+COMMENT ON TABLE public.reportes IS 'Certificados de suelo emitidos a partir de una lectura y del motor de reglas del CIAT.';
 
 --
 -- Name: tipos_cultivo; Type: TABLE; Schema: public; Owner: -
@@ -156,10 +155,10 @@ CREATE TABLE public.tipos_cultivo (
 );
 
 --
--- Name: tipos_cultivo_tipo_cultivo_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: tipos_cultivo_id_secuencia; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.tipos_cultivo_tipo_cultivo_id_seq
+CREATE SEQUENCE public.tipos_cultivo_id_secuencia
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -168,10 +167,10 @@ CREATE SEQUENCE public.tipos_cultivo_tipo_cultivo_id_seq
     CACHE 1;
 
 --
--- Name: tipos_cultivo_tipo_cultivo_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: tipos_cultivo_id_secuencia; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.tipos_cultivo_tipo_cultivo_id_seq OWNED BY public.tipos_cultivo.tipo_cultivo_id;
+ALTER SEQUENCE public.tipos_cultivo_id_secuencia OWNED BY public.tipos_cultivo.tipo_cultivo_id;
 
 --
 -- Name: usuarios; Type: TABLE; Schema: public; Owner: -
@@ -180,9 +179,9 @@ ALTER SEQUENCE public.tipos_cultivo_tipo_cultivo_id_seq OWNED BY public.tipos_cu
 CREATE TABLE public.usuarios (
     usuario_id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     nombre_completo character varying(150) NOT NULL,
-    email character varying(100) NOT NULL,
-    password_hash text NOT NULL,
-    rol public.user_role DEFAULT 'productor'::public.user_role NOT NULL,
+    correo character varying(100) NOT NULL,
+    contrasena_hash text NOT NULL,
+    rol public.rol_usuario DEFAULT 'productor'::public.rol_usuario NOT NULL,
     telefono character varying(20),
     fecha_registro timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     activo boolean DEFAULT true,
@@ -199,137 +198,137 @@ COMMENT ON TABLE public.usuarios IS 'Almacena la información de identidad y rol
 -- Name: tipos_cultivo tipo_cultivo_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.tipos_cultivo ALTER COLUMN tipo_cultivo_id SET DEFAULT nextval('public.tipos_cultivo_tipo_cultivo_id_seq'::regclass);
+ALTER TABLE ONLY public.tipos_cultivo ALTER COLUMN tipo_cultivo_id SET DEFAULT nextval('public.tipos_cultivo_id_secuencia'::regclass);
 
 --
--- Name: lecturas_suelo lecturas_suelo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.lecturas_suelo
-    ADD CONSTRAINT lecturas_suelo_pkey PRIMARY KEY (lectura_id);
-
---
--- Name: lotes lotes_dispositivo_mac_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.lotes
-    ADD CONSTRAINT lotes_dispositivo_mac_key UNIQUE (dispositivo_mac);
-
---
--- Name: lotes lotes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.lotes
-    ADD CONSTRAINT lotes_pkey PRIMARY KEY (lote_id);
-
---
--- Name: parcelas parcelas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.parcelas
-    ADD CONSTRAINT parcelas_pkey PRIMARY KEY (parcela_id);
-
---
--- Name: reportes reportes_codigo_verificacion_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.reportes
-    ADD CONSTRAINT reportes_codigo_verificacion_key UNIQUE (codigo_verificacion);
-
---
--- Name: reportes reportes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.reportes
-    ADD CONSTRAINT reportes_pkey PRIMARY KEY (reporte_id);
-
---
--- Name: tipos_cultivo tipos_cultivo_nombre_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.tipos_cultivo
-    ADD CONSTRAINT tipos_cultivo_nombre_key UNIQUE (nombre);
-
---
--- Name: tipos_cultivo tipos_cultivo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.tipos_cultivo
-    ADD CONSTRAINT tipos_cultivo_pkey PRIMARY KEY (tipo_cultivo_id);
-
---
--- Name: usuarios usuarios_ci_nit_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.usuarios
-    ADD CONSTRAINT usuarios_ci_nit_key UNIQUE (ci_nit);
-
---
--- Name: usuarios usuarios_email_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.usuarios
-    ADD CONSTRAINT usuarios_email_key UNIQUE (email);
-
---
--- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.usuarios
-    ADD CONSTRAINT usuarios_pkey PRIMARY KEY (usuario_id);
-
---
--- Name: idx_lecturas_lote_fecha; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_lecturas_lote_fecha ON public.lecturas_suelo USING btree (lote_id, fecha_captura DESC);
-
---
--- Name: idx_parcelas_geom; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_parcelas_geom ON public.parcelas USING gist (geom);
-
---
--- Name: reportes fk_lectura_reporte; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.reportes
-    ADD CONSTRAINT fk_lectura_reporte FOREIGN KEY (lectura_id) REFERENCES public.lecturas_suelo(lectura_id);
-
---
--- Name: lecturas_suelo fk_lote_lectura; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lecturas_suelo lecturas_suelo_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lecturas_suelo
-    ADD CONSTRAINT fk_lote_lectura FOREIGN KEY (lote_id) REFERENCES public.lotes(lote_id) ON DELETE CASCADE;
+    ADD CONSTRAINT lecturas_suelo_clave_primaria PRIMARY KEY (lectura_id);
 
 --
--- Name: reportes fk_lote_reporte; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.reportes
-    ADD CONSTRAINT fk_lote_reporte FOREIGN KEY (lote_id) REFERENCES public.lotes(lote_id) ON DELETE CASCADE;
-
---
--- Name: lotes fk_parcela; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lotes lotes_dispositivo_mac_unico; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lotes
-    ADD CONSTRAINT fk_parcela FOREIGN KEY (parcela_id) REFERENCES public.parcelas(parcela_id) ON DELETE CASCADE;
+    ADD CONSTRAINT lotes_dispositivo_mac_unico UNIQUE (dispositivo_mac);
 
 --
--- Name: parcelas fk_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lotes lotes_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lotes
+    ADD CONSTRAINT lotes_clave_primaria PRIMARY KEY (lote_id);
+
+--
+-- Name: parcelas parcelas_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.parcelas
-    ADD CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE;
+    ADD CONSTRAINT parcelas_clave_primaria PRIMARY KEY (parcela_id);
 
 --
--- Name: parcelas parcelas_tipo_cultivo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reportes reportes_codigo_verificacion_unico; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reportes
+    ADD CONSTRAINT reportes_codigo_verificacion_unico UNIQUE (codigo_verificacion);
+
+--
+-- Name: reportes reportes_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reportes
+    ADD CONSTRAINT reportes_clave_primaria PRIMARY KEY (reporte_id);
+
+--
+-- Name: tipos_cultivo tipos_cultivo_nombre_unico; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_cultivo
+    ADD CONSTRAINT tipos_cultivo_nombre_unico UNIQUE (nombre);
+
+--
+-- Name: tipos_cultivo tipos_cultivo_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tipos_cultivo
+    ADD CONSTRAINT tipos_cultivo_clave_primaria PRIMARY KEY (tipo_cultivo_id);
+
+--
+-- Name: usuarios usuarios_ci_nit_unico; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_ci_nit_unico UNIQUE (ci_nit);
+
+--
+-- Name: usuarios usuarios_correo_unico; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_correo_unico UNIQUE (correo);
+
+--
+-- Name: usuarios usuarios_clave_primaria; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_clave_primaria PRIMARY KEY (usuario_id);
+
+--
+-- Name: indice_lecturas_lote_fecha; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX indice_lecturas_lote_fecha ON public.lecturas_suelo USING btree (lote_id, fecha_captura DESC);
+
+--
+-- Name: indice_parcelas_geometria; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX indice_parcelas_geometria ON public.parcelas USING gist (geometria);
+
+--
+-- Name: reportes referencia_lectura_reporte; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reportes
+    ADD CONSTRAINT referencia_lectura_reporte FOREIGN KEY (lectura_id) REFERENCES public.lecturas_suelo(lectura_id);
+
+--
+-- Name: lecturas_suelo referencia_lote_lectura; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lecturas_suelo
+    ADD CONSTRAINT referencia_lote_lectura FOREIGN KEY (lote_id) REFERENCES public.lotes(lote_id) ON DELETE CASCADE;
+
+--
+-- Name: reportes referencia_lote_reporte; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reportes
+    ADD CONSTRAINT referencia_lote_reporte FOREIGN KEY (lote_id) REFERENCES public.lotes(lote_id) ON DELETE CASCADE;
+
+--
+-- Name: lotes referencia_parcela; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lotes
+    ADD CONSTRAINT referencia_parcela FOREIGN KEY (parcela_id) REFERENCES public.parcelas(parcela_id) ON DELETE CASCADE;
+
+--
+-- Name: parcelas referencia_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.parcelas
-    ADD CONSTRAINT parcelas_tipo_cultivo_id_fkey FOREIGN KEY (tipo_cultivo_id) REFERENCES public.tipos_cultivo(tipo_cultivo_id);
+    ADD CONSTRAINT referencia_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE;
+
+--
+-- Name: parcelas parcelas_tipo_cultivo_id_referencia; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parcelas
+    ADD CONSTRAINT parcelas_tipo_cultivo_id_referencia FOREIGN KEY (tipo_cultivo_id) REFERENCES public.tipos_cultivo(tipo_cultivo_id);
 
 --

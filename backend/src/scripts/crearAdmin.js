@@ -19,7 +19,7 @@ const REGEX_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{8,72
     }
     try {
         const correo = email.trim().toLowerCase();
-        const existe = await db.query('SELECT usuario_id FROM usuarios WHERE LOWER(email) = $1', [correo]);
+        const existe = await db.query('SELECT usuario_id FROM usuarios WHERE LOWER(correo) = $1', [correo]);
         if (existe.rowCount > 0) {
             await db.query("UPDATE usuarios SET rol = 'admin_ciat' WHERE usuario_id = $1", [existe.rows[0].usuario_id]);
             console.log(`El usuario ${correo} ahora es administrador del CIAT.`);
@@ -30,7 +30,7 @@ const REGEX_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{8,72
                 process.exit(1);
             }
             await db.query(
-                `INSERT INTO usuarios (nombre_completo, email, password_hash, ci_nit, rol)
+                `INSERT INTO usuarios (nombre_completo, correo, contrasena_hash, ci_nit, rol)
                  VALUES ($1, $2, $3, $4, 'admin_ciat')`,
                 [nombre.trim(), correo, await bcrypt.hash(clave, 10), ci.trim()]
             );

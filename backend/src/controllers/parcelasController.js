@@ -2,9 +2,6 @@ const db = require('../config/db');
 const { validarLimiteHectareas } = require('../utils/validators');
 const { hoyEnBolivia, cambiosParcela, validarBaja, MOTIVOS_BAJA } = require('../utils/actividades');
 
-// Cobertura máxima de un nodo sensor (restricción check_cobertura_sensor de la tabla lotes)
-const SUPERFICIE_MAX_LOTE = 15;
-
 /**
  * POST /api/parcelas — registra una parcela dibujada en el mapa satelital.
  */
@@ -37,7 +34,7 @@ const crearParcela = async (req, res) => {
         }
 
         const queryText = `
-            INSERT INTO parcelas (usuario_id, nombre, ubicacion_nombre, tipo_cultivo_id, area_hectareas, geom)
+            INSERT INTO parcelas (usuario_id, nombre, ubicacion_nombre, tipo_cultivo_id, area_hectareas, geometria)
             VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_GeomFromGeoJSON($6), 4326))
             RETURNING parcela_id, nombre, area_hectareas, tipo_cultivo_id;
         `;
@@ -60,6 +57,9 @@ const crearParcela = async (req, res) => {
             await client.query('BEGIN');
             const result = await client.query(queryText, values);
             parcelaCreada = result.rows[0];
+            // Un lote por cada 15 ha o fracción, hasta cuatro, de igual superficie (RN-02, RN-03)
+            const lotes = await client.query('SELECT public.crear_lotes_de_parcela($1) AS cantidad', [parcelaCreada.parcela_id]);
+            parcelaCreada.lotes = lotes.rows[0].cantidad;
             const cultivo = await client.query('SELECT nombre FROM tipos_cultivo WHERE tipo_cultivo_id = $1', [parcelaCreada.tipo_cultivo_id]);
             await client.query(
                 `INSERT INTO actividades_parcela (parcela_id, usuario_id, tipo, fecha, descripcion, detalle)
@@ -71,7 +71,7 @@ const crearParcela = async (req, res) => {
                         tipo_cultivo_id: parcelaCreada.tipo_cultivo_id,
                         area_ha: Number(parcelaCreada.area_hectareas),
                         ubicacion: ubicacion_nombre.trim(),
-                        lote_ha: Math.min(Number(parcelaCreada.area_hectareas), SUPERFICIE_MAX_LOTE),
+                        lotes: parcelaCreada.lotes,
                     })]
             );
             await client.query('COMMIT');
@@ -80,18 +80,6 @@ const crearParcela = async (req, res) => {
             throw errTx;
         } finally {
             client.release();
-        }
-
-        // Lote principal del nodo IoT
-        try {
-            const macRandom = `00:1A:C2:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}:${Math.floor(Math.random() * 90 + 10)}`;
-            await db.query(
-                `INSERT INTO lotes (parcela_id, nombre_lote, descripcion, superficie_ha, dispositivo_mac)
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [parcelaCreada.parcela_id, `Lote Principal - ${nombre}`, `Lote de monitoreo para ${nombre}`, Math.min(parseFloat(area_hectareas), SUPERFICIE_MAX_LOTE), macRandom]
-            );
-        } catch (loteErr) {
-            console.error('Aviso: no se pudo crear lote automático:', loteErr);
         }
 
         res.status(201).json({
@@ -122,17 +110,19 @@ const obtenerParcelas = async (req, res) => {
                 tipo_cultivo_id AS "cropType", 
                 area_hectareas AS area,
                 fecha_creacion AS "createdAt",
-                ST_AsGeoJSON(geom) AS geom,
-                l.dispositivo_mac AS "sensorMac",
-                l.ultima_sincronizacion AS "sensorUltimaLectura",
+                ST_AsGeoJSON(geometria) AS geom,
                 (parcelas.usuario_id = $1) AS propia,
-                (SELECT nombre_completo FROM usuarios u WHERE u.usuario_id = parcelas.usuario_id) AS responsable
+                (SELECT nombre_completo FROM usuarios u WHERE u.usuario_id = parcelas.usuario_id) AS responsable,
+                (SELECT COALESCE(json_agg(json_build_object(
+                        'id', l.lote_id,
+                        'nombre', l.nombre_lote,
+                        'superficie', l.superficie_ha,
+                        'geometria', ST_AsGeoJSON(l.geometria)::json,
+                        'sensorMac', CASE WHEN l.clave_dispositivo_hash IS NOT NULL THEN l.dispositivo_mac END,
+                        'sensorUltimaLectura', CASE WHEN l.clave_dispositivo_hash IS NOT NULL THEN l.ultima_sincronizacion END
+                    ) ORDER BY l.nombre_lote), '[]'::json)
+                 FROM lotes l WHERE l.parcela_id = parcelas.parcela_id) AS lotes
             FROM parcelas
-            LEFT JOIN LATERAL (
-                SELECT dispositivo_mac, ultima_sincronizacion FROM lotes
-                WHERE lotes.parcela_id = parcelas.parcela_id AND dispositivo_token_hash IS NOT NULL
-                LIMIT 1
-            ) l ON true
             WHERE (usuario_id = $1 OR $2) AND activa
             ORDER BY nombre ASC;
         `;

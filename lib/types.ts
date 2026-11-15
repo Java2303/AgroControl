@@ -19,12 +19,23 @@ export interface Parcel {
   ubicacion_nombre?: string
   coordinates?: MapPoint[]
   createdAt?: string
-  /** MAC del nodo ESP32 vinculado; null si la parcela usa el simulador */
+  /** MAC de un nodo ESP32 vinculado a alguno de sus lotes; null si todos usan el simulador */
   sensorMac?: string | null
-  sensorUltimaLectura?: string | null
   /** false si la parcela es de otro usuario (el administrador del CIAT ve todas) */
   propia?: boolean
   responsable?: string
+  /** Lotes de monitoreo: uno por cada 15 ha o fracción, hasta cuatro (RN-02, RN-03) */
+  lotes: Lote[]
+}
+
+export interface Lote {
+  id: string
+  nombre: string
+  superficie: number
+  coordinates: MapPoint[]
+  /** MAC del nodo ESP32 del lote; null si el lote usa el simulador */
+  sensorMac: string | null
+  sensorUltimaLectura: string | null
 }
 
 /** Certificado de suelo tal como lo devuelven POST /api/parcelas/:id/certificado y GET /api/certificados/:codigo */
@@ -33,7 +44,7 @@ export interface CertificadoSuelo {
   fechaEmision: string
   emitidoPor: string | null
   parcela: { nombre: string; ubicacion: string | null; areaHa: number; cultivo: string | null }
-  lote: { codigo: string; superficieHa: number }
+  lote: { codigo: string; nombre?: string; superficieHa: number }
   rendimiento: { cantidad: number; unidad: string; fecha: string } | null
   lectura: { fecha: string; humedad: number; temperatura: number; conductividad: number; ph: number; nitrogeno: number; fosforo: number; potasio: number }
   origen: string
@@ -49,6 +60,8 @@ export interface SensorReading {
   id: string
   parcelId: string
   parcelName: string
+  loteId?: string
+  loteName?: string
   type: 'humidity' | 'temperature' | 'ph' | 'nitrogen'
   value: number
   unit: string
@@ -89,7 +102,7 @@ export interface MapPoint {
   lng: number
 }
 
-export type ViewType = 'login' | 'register' | 'dashboard' | 'map' | 'parcels' | 'sensors' | 'history' | 'settings'
+export type ViewType = 'login' | 'register' | 'dashboard' | 'map' | 'parcels' | 'sensors' | 'history' | 'users' | 'settings'
 
 /** Nombre visible de cada rol */
 export const ROL_LABEL: Record<User['userType'], string> = {

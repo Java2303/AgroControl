@@ -10,19 +10,23 @@ interface NavItem {
   icon: string
   /** Etiqueta corta para la barra inferior del celular */
   shortLabel?: string
+  /** Solo el administrador del CIAT gestiona cuentas (UC-04) */
+  soloAdmin?: boolean
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', shortLabel: 'Inicio' },
+  { id: 'dashboard', label: 'Tablero', icon: 'dashboard', shortLabel: 'Inicio' },
   { id: 'map', label: 'Mapa', icon: 'map' },
   { id: 'parcels', label: 'Parcelas', icon: 'grid_view' },
   { id: 'sensors', label: 'Sensores', icon: 'sensors' },
   { id: 'history', label: 'Historial', icon: 'history' },
+  { id: 'users', label: 'Usuarios', icon: 'manage_accounts', soloAdmin: true },
   { id: 'settings', label: 'Ajustes', icon: 'settings' },
 ]
 
 export function Navigation() {
   const { state, navigate, logout } = useApp()
+  const items = navItems.filter((item) => !item.soloAdmin || state.user?.userType === 'admin_ciat')
 
   return (
     <>
@@ -53,7 +57,7 @@ export function Navigation() {
 
         <nav className="flex-1 p-4">
           <div className="space-y-1.5">
-            {navItems.map((item) => (
+            {items.map((item) => (
               <button
                 key={item.id}
                 onClick={() => navigate(item.id)}
@@ -84,7 +88,7 @@ export function Navigation() {
 
       <nav className="surface-dark md:hidden fixed bottom-0 left-0 right-0 glass-dark z-40 safe-area-pb">
         <div className="flex py-1.5 px-1">
-          {navItems.map((item) => (
+          {items.map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}

@@ -28,5 +28,5 @@ CREATE TABLE IF NOT EXISTS public.actividades_parcela (
 
 COMMENT ON TABLE public.actividades_parcela IS 'Bitácora de labores agrícolas de cada parcela; las labores se anulan, no se eliminan.';
 
-CREATE INDEX IF NOT EXISTS idx_actividades_parcela_fecha
+CREATE INDEX IF NOT EXISTS indice_actividades_parcela_fecha
     ON public.actividades_parcela USING btree (parcela_id, fecha DESC);

@@ -44,8 +44,9 @@ const sensoresController = {
       const queryUltimas = `
         SELECT 
           p.parcela_id AS "parcelId",
-          p.nombre AS "parcelName",
+          p.nombre || CASE WHEN (SELECT COUNT(*) FROM lotes x WHERE x.parcela_id = p.parcela_id) > 1 THEN ' · ' || l.nombre_lote ELSE '' END AS "parcelName",
           l.lote_id AS "loteId",
+          l.nombre_lote AS "loteName",
           ls.humedad_suelo AS humidity,
           ls.temperatura_suelo AS temperature,
           ls.ph AS ph,
@@ -63,14 +64,14 @@ const sensoresController = {
           LIMIT 1
         ) ls ON true
         WHERE (p.usuario_id = $1 OR $2) AND p.activa
-        ORDER BY p.nombre ASC;
+        ORDER BY p.nombre ASC, l.nombre_lote ASC;
       `;
 
       const resUltimas = await db.query(queryUltimas, [usuario_id, esAdmin]);
 
       const queryHistorial = `
         SELECT 
-          l.parcela_id AS "parcelId",
+          l.lote_id AS "loteId",
           ls.humedad_suelo AS humidity,
           ls.temperatura_suelo AS temperature,
           ls.ph AS ph,
@@ -89,26 +90,26 @@ const sensoresController = {
 
       const resHistorial = await db.query(queryHistorial, [usuario_id, esAdmin]);
 
-      const historialPorParcela = {};
+      const historialPorLote = {};
       resHistorial.rows.forEach(row => {
-        if (!historialPorParcela[row.parcelId]) {
-          historialPorParcela[row.parcelId] = {
+        if (!historialPorLote[row.loteId]) {
+          historialPorLote[row.loteId] = {
             humidity: [],
             temperature: [],
             ph: [],
             nitrogen: []
           };
         }
-        historialPorParcela[row.parcelId].humidity.push(parseFloat(row.humidity || 0));
-        historialPorParcela[row.parcelId].temperature.push(parseFloat(row.temperature || 0));
-        historialPorParcela[row.parcelId].ph.push(parseFloat(row.ph || 0));
-        historialPorParcela[row.parcelId].nitrogen.push(parseFloat(row.nitrogen || 0));
+        historialPorLote[row.loteId].humidity.push(parseFloat(row.humidity || 0));
+        historialPorLote[row.loteId].temperature.push(parseFloat(row.temperature || 0));
+        historialPorLote[row.loteId].ph.push(parseFloat(row.ph || 0));
+        historialPorLote[row.loteId].nitrogen.push(parseFloat(row.nitrogen || 0));
       });
 
       const respuesta = [];
 
       resUltimas.rows.forEach(row => {
-        const hist = historialPorParcela[row.parcelId] || {
+        const hist = historialPorLote[row.loteId] || {
           humidity: [],
           temperature: [],
           ph: [],
@@ -127,8 +128,10 @@ const sensoresController = {
           const histArray = hist[type].length > 0 ? hist[type] : [val];
 
           respuesta.push({
-            id: `${row.parcelId}-${type}`,
+            id: `${row.loteId}-${type}`,
             parcelId: row.parcelId,
+            loteId: row.loteId,
+            loteName: row.loteName,
             parcelName: row.parcelName,
             type: type,
             value: val,

@@ -72,7 +72,9 @@ export interface DetalleEvento {
   cultivo?: string | null
   area_ha?: number
   ubicacion?: string | null
+  /** Registros anteriores a la división en lotes guardaban la superficie del único lote */
   lote_ha?: number
+  lotes?: number
   reconstruido?: boolean
   // edicion_parcela: cambios realizados
   cambios?: CambioParcela[]
